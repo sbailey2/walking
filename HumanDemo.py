@@ -1,6 +1,7 @@
 import socket
 import sys
 import struct
+import time
 
 import numpy as np
 
@@ -14,7 +15,11 @@ print('Connected to host')
 s.send(b'Hello!')
 iteration = 0
 while True:
-    state = s.recv(1000 * 4)
+    stateSize = s.recv(4);
+    stateSize = struct.unpack('i',stateSize)[0]
+    state = s.recv(1000)
+    while len(state) < stateSize:
+        state += s.recv(1000)
     state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
     c = np.random.uniform(-0.1,0.1,16)
     buff = struct.pack('%sf' % len(c), *c)
@@ -23,6 +28,9 @@ while True:
         print('Iteration '+str(iteration))
         print(state.shape)
         s.send(b'RESET')
+        zeros = np.zeros(20)
+        buff = struct.pack('%sf' % len(zeros), *zeros)
+        s.send(buff)
     else:
         s.send(buff)
 

@@ -607,7 +607,16 @@ public:
 
     void ApplyControl(const std::vector<double> &c)
     {
+	const double MAX_IMPULSE = 1.5;
 	std::vector<double> inputs(c);
+	for (int i = 0; i < inputs.size(); ++i) {
+	    if (inputs[i] < -MAX_IMPULSE) {
+		inputs[i] = -MAX_IMPULSE;
+	    }
+	    else if (inputs[i] > MAX_IMPULSE) {
+		inputs[i] = MAX_IMPULSE;
+	    }
+	}
 	inputs.resize(GetControlSize());
 	for (int i = 0; i < inputs.size(); ++i) {
 	    int body = m_controls[i].second;
@@ -679,10 +688,8 @@ void HumanDemo::initPhysics()
     }
 
     // Spawn one ragdoll
-    btVector3 startOffset(1,0.5,0);
+    btVector3 startOffset(0,0,-0.2);
     spawnHumanRig(startOffset, false);
-    startOffset.setValue(-2,0.5,0);
-    spawnHumanRig(startOffset, true);
 
     m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
 }
@@ -719,7 +726,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
     // Send the state of the system
     float buffer[1000];
     char *newBuff = (char*)buffer;
-    int idx = 0;
+    int idx = 1;
     for (int i = 0; i < m_rigs[0]->GetBodySize(); ++i) {
 	btTransform trans = m_rigs[0]->GetBodies()[i]->getWorldTransform();
 	btVector3 t = trans.getOrigin();
@@ -737,12 +744,19 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 	    }
 	}
     }
+    int size = (idx - 1) * sizeof(float);
+    ((int*)newBuff)[0] = size;
+    //int n = write(clientSocket, &size, sizeof(int));
     int n = write(clientSocket, newBuff, idx * sizeof(float));
 
 
     // Read the control from the socket
     std::vector<double> c(16);
-    n = read(clientSocket, newBuff, 1000*sizeof(float));
+    char *buffPtr = newBuff;
+    while (buffPtr - newBuff < 16 * sizeof(float)) {
+	n = read(clientSocket, buffPtr, 1000*sizeof(float));
+	buffPtr += n;
+    }
 
     // Check if we want to reset
     std::string response(newBuff);
