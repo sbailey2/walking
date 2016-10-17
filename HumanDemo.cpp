@@ -105,7 +105,9 @@ public:
 	float pitch = 52;
 	float yaw = 35;
 	float targetPos[3]={0,0.46,0};
-	m_guiHelper->resetCamera(dist,pitch,yaw,targetPos[0],targetPos[1],targetPos[2]);
+	if (m_guiHelper != 0) {
+	    m_guiHelper->resetCamera(dist,pitch,yaw,targetPos[0],targetPos[1],targetPos[2]);
+	}
     }
 };
 
@@ -647,7 +649,9 @@ void humanPreTickCallback (btDynamicsWorld *world, btScalar timeStep)
 
 void HumanDemo::initPhysics()
 {
-    m_guiHelper->setUpAxis(1);
+    if (m_guiHelper != 0) {
+	m_guiHelper->setUpAxis(1);
+    }
 
     // Setup the basic world
 
@@ -674,7 +678,9 @@ void HumanDemo::initPhysics()
     m_dynamicsWorld = new btDiscreteDynamicsWorld(m_dispatcher,m_broadphase,m_solver,m_collisionConfiguration);
 
     m_dynamicsWorld->setInternalTickCallback(humanPreTickCallback,this,true);
-    m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
+    if (m_guiHelper != 0) {
+	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
+    }
 	
 
     // Setup a big ground box
@@ -691,7 +697,9 @@ void HumanDemo::initPhysics()
     btVector3 startOffset(0,0,-0.2);
     spawnHumanRig(startOffset, false);
 
-    m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+    if (m_guiHelper != 0) {
+	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
+    }
 }
 
 
