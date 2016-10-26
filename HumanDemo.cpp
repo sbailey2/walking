@@ -156,6 +156,7 @@ class HumanRig
 
 	btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
+	rbInfo.m_friction = 1.0f;
 	btRigidBody* body = new btRigidBody(rbInfo);
 
 	m_ownerWorld->addRigidBody(body);

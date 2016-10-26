@@ -430,6 +430,7 @@ struct CommonRigidBodyBase : public CommonExampleInterface
 		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 
 		btRigidBody::btRigidBodyConstructionInfo cInfo(mass, myMotionState, shape, localInertia);
+		cInfo.m_friction = 1.0f;
 
 		btRigidBody* body = new btRigidBody(cInfo);
 		//body->setContactProcessingThreshold(m_defaultContactProcessingThreshold);
