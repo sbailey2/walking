@@ -46,6 +46,7 @@ class HumanDemo : public CommonRigidBodyBase
     float m_Time;
     float m_fCyclePeriod; // in milliseconds
     float m_fMuscleStrength;
+    bool m_fullState;
 
     int serverSocket;
     int clientSocket;
@@ -55,7 +56,8 @@ class HumanDemo : public CommonRigidBodyBase
 	
 public:
     HumanDemo(struct GUIHelperInterface* helper)
-	:CommonRigidBodyBase(helper)
+	:CommonRigidBodyBase(helper),
+	 m_fullState(false)
     {
 	serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 	sockaddr_in serverAddr;
@@ -602,6 +604,7 @@ public:
     }
 
     btTypedConstraint** GetJoints() {return &m_joints[0];}
+    int GetJointSize() {return m_joints.size();}
     btRigidBody **GetBodies() {return &m_bodies[0];}
     int GetBodySize() {return m_bodies.size();}
     int *GetParents() {return &m_parents[0];}
@@ -736,20 +739,59 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
     float buffer[1000];
     char *newBuff = (char*)buffer;
     int idx = 1;
-    for (int i = 0; i < m_rigs[0]->GetBodySize(); ++i) {
-	btTransform trans = m_rigs[0]->GetBodies()[i]->getWorldTransform();
-	btVector3 t = trans.getOrigin();
-	btVector3 v = m_rigs[0]->GetBodies()[i]->getLinearVelocity();
-	btVector3 w = m_rigs[0]->GetBodies()[i]->getAngularVelocity();
-	btMatrix3x3 r = trans.getBasis();
-	for (int j = 0; j < 3; ++j) {
-	    buffer[idx++] = t[j];
-	    buffer[idx++] = v[j];
-	    buffer[idx++] = w[j];
+    if (m_fullState) {
+	for (int i = 0; i < m_rigs[0]->GetBodySize(); ++i) {
+	    btTransform trans = m_rigs[0]->GetBodies()[i]->getWorldTransform();
+	    btVector3 t = trans.getOrigin();
+	    btVector3 v = m_rigs[0]->GetBodies()[i]->getLinearVelocity();
+	    btVector3 w = m_rigs[0]->GetBodies()[i]->getAngularVelocity();
+	    btMatrix3x3 r = trans.getBasis();
+	    for (int j = 0; j < 3; ++j) {
+		buffer[idx++] = t[j];
+		buffer[idx++] = v[j];
+		buffer[idx++] = w[j];
+	    }
+	    for (int j = 0; j < 3; ++j) {
+		for (int k = 0; k < 3; ++k) {
+		    buffer[idx++] = r[j][k];
+		}
+	    }
 	}
-	for (int j = 0; j < 3; ++j) {
-	    for (int k = 0; k < 3; ++k) {
-		buffer[idx++] = r[j][k];
+    }
+    else {
+	// Print the location and rotation of the root joint
+	btTransform trans = m_rigs[0]->GetBodies()[0]->getWorldTransform();
+	btVector3 t = trans.getOrigin();
+	btMatrix3x3 rootMat = trans.getBasis();
+	btScalar rootY, rootP, rootR;
+	rootMat.getEulerYPR(rootY, rootP, rootR);
+	buffer[idx++] = t[0];
+	buffer[idx++] = t[1];
+	buffer[idx++] = t[2];
+	buffer[idx++] = rootY;
+	buffer[idx++] = rootP;
+	buffer[idx++] = rootR;
+
+	// Print the angle of each joint
+	for (int i = 0; i < m_rigs[0]->GetJointSize(); ++i) {
+	    btTypedConstraint *constraint = m_rigs[0]->GetJoints()[i];
+	    btHingeConstraint *hinge = dynamic_cast<btHingeConstraint*>(constraint);
+	    if (hinge != 0) {
+		buffer[idx++] = hinge->getHingeAngle();
+	    }
+	    btConeTwistConstraint *cone = dynamic_cast<btConeTwistConstraint*>(constraint);
+	    if (cone != 0) {
+		btRigidBody a = cone->getRigidBodyA();
+		btRigidBody b = cone->getRigidBodyB();
+		btQuaternion orientationA = a.getOrientation();
+		btQuaternion orientationB = b.getOrientation();
+		btQuaternion orientation = orientationB * orientationA.inverse();
+		btMatrix3x3 mat(orientation);
+		btScalar y,p,r;
+		mat.getEulerYPR(y,p,r);
+		buffer[idx++] = y;
+		buffer[idx++] = p;
+		buffer[idx++] = r;
 	    }
 	}
     }

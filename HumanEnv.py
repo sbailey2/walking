@@ -42,7 +42,7 @@ class HumanEnv(gym.Env):
         self.y_threshold = 0.5
 
         self.action_space = spaces.Box(-1.5,1.5,(16,))
-        self.observation_space = spaces.Box(-1e6,1e6,(306,))
+        self.observation_space = spaces.Box(-1e6,1e6,(26,))
 
         self._seed()
         self.reset()
@@ -78,7 +78,7 @@ class HumanEnv(gym.Env):
         state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
 
         # Get the y position of the root joint
-        y = state[3]
+        y = state[1]
         done = y < self.y_threshold
 
         if not done:

@@ -24,12 +24,13 @@ while True:
     c = np.random.uniform(-0.1,0.1,16)
     buff = struct.pack('%sf' % len(c), *c)
     iteration += 1
-    if iteration % 1000 == 0:
+    if iteration % 200 == 0:
         print('Iteration '+str(iteration))
         print(state.shape)
+        print(state)
         s.send(b'RESET')
-        zeros = np.zeros(20)
-        buff = struct.pack('%sf' % len(zeros), *zeros)
+        zeros = np.zeros(20).astype(int)
+        buff = struct.pack('%si' % len(zeros), *zeros)
         s.send(buff)
     else:
         s.send(buff)
