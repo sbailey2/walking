@@ -42,11 +42,12 @@ class HumanEnv(gym.Env):
         self.y_threshold = 0.5
 
         self.action_space = spaces.Box(-1.5,1.5,(16,))
-        self.observation_space = spaces.Box(-1e6,1e6,(26,))
+        self.observation_space = spaces.Box(-1e6,1e6,(24,))
 
         self._seed()
         self.reset()
         self.viewer = None
+        self.lastX = 0.0
 
         self.steps_beyond_done = None
 
@@ -79,12 +80,18 @@ class HumanEnv(gym.Env):
 
         # Get the y position of the root joint
         y = state[1]
+        reward = state[2] - self.lastX 
+        self.lastX = state[2]
+        usedStates = np.ones(state.shape[0]).astype(bool)
+        usedstates[0] = False
+        usedStates[2] = False
+        state = state[usedStates]
+        
         done = y < self.y_threshold
 
         if not done:
-            reward = 1.0
+            pass
         elif self.steps_beyond_done is None:
-            # skeleton just fell!
             self.steps_beyond_done = 0
             reward = 1.0
         else:
@@ -125,6 +132,7 @@ class HumanEnv(gym.Env):
         self.state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
 
         self.steps_beyond_done = None
+        self.lastX = state[2]
         return np.array(self.state)
 
     def _render(self, mode='human', close=False):
