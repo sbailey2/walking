@@ -238,6 +238,19 @@ public:
 	transform.setOrigin(vRoot);
 	transform.setRotation(btQuaternion(vAxis, M_PI_2));
 
+	btMatrix3x3 tempMat = transform.getBasis();
+	std::cout << "Root matrix:\n";
+	for (int i = 0; i < 3; ++i) {
+	    std::cout << tempMat[i][0] << "\t" << tempMat[i][1] << "\t" << tempMat[i][2] << "\n";
+	}
+	btScalar y,p,r;
+	tempMat.getEulerYPR(y,p,r);
+	std::cout << "YPR representation:\n";
+	std::cout << y << "\t" << p << "\t" << r << "\n";
+	tempMat.getEulerZYX(y,p,r);
+	std::cout << "ZYX representation\n";
+	std::cout << y << "\t" << p << "\t" << r << "\n";
+
 	btVector3 vLWaist = vRoot + btVector3(btScalar(-0.01), btScalar(-0.26), btScalar(0.0));
 	btVector3 vPelvis = vLWaist + btVector3(btScalar(0.0), btScalar(-0.165), btScalar(0.0));
 	btVector3 vRThigh = vPelvis + btVector3(btScalar(0.0), btScalar(-0.04), btScalar(-0.1));
@@ -262,14 +275,14 @@ public:
 	    torsoBody = localCreateRigidBody(btScalar(1.0), offset*transform, torsoShape);
 	}
 	m_bodies.push_back(torsoBody);
-	m_parents.push_back(-1);
+	m_parents.push_back(2);
 
 	// Head 1
 	btTransform headTransform;
 	headTransform.setIdentity();
 	btVector3 vHeadOrigin = vRoot + btVector3(btScalar(0.0), btScalar(0.19), btScalar(0.0));
 	headTransform.setOrigin(vHeadOrigin);
-	btRigidBody *headBody = localCreateRigidBody(btScalar(1.0), offset*headTransform, headShape);
+	btRigidBody *headBody = localCreateRigidBody(btScalar(0.0), offset*headTransform, headShape);
 	m_bodies.push_back(headBody);
 	btTransform neckPivot;
 	neckPivot.setIdentity();
@@ -299,7 +312,7 @@ public:
 	btTypedConstraint *chestConstraint = new btFixedConstraint(*torsoBody, *upWaistBody, chestTorsoFrame, chestWaistFrame);
 	m_ownerWorld->addConstraint(chestConstraint, true);
 	m_joints.push_back(chestConstraint);
-	m_parents.push_back(0);
+	m_parents.push_back(3);
 
 	// Lower Waist 3
 	btTransform loWaistTransform;
@@ -309,19 +322,19 @@ public:
 	loWaistTransform.setRotation(btQuaternion(vAxis, M_PI_2));
 	btRigidBody *loWaistBody = localCreateRigidBody(btScalar(1.0), offset*loWaistTransform, loWaistShape);
 	m_bodies.push_back(loWaistBody);
-	btTransform loWaistPivot;
-	loWaistPivot.setIdentity();
-	loWaistPivot.setOrigin(vLWaist);
-	loWaistPivot = offset * loWaistPivot;
-	btTransform loWaistUpFrame = upWaistBody->getWorldTransform().inverse() * loWaistPivot;
-	btTransform loWaistLoFrame = loWaistBody->getWorldTransform().inverse() * loWaistPivot;
-	btConeTwistConstraint *loWaistConstraint = new btConeTwistConstraint(*upWaistBody, *loWaistBody, loWaistUpFrame, loWaistLoFrame);
-	loWaistConstraint->setLimit(btScalar(0.0), btScalar(M_PI_4), btScalar(M_PI_4));
-	m_ownerWorld->addConstraint(loWaistConstraint, true);
-	m_joints.push_back(loWaistConstraint);
-	m_parents.push_back(2);
-	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(1.0), btScalar(0.0)), 3)); // 0 ????
-	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0)), 3)); // 1
+	btTransform upWaistPivot;
+	upWaistPivot.setIdentity();
+	upWaistPivot.setOrigin(vLWaist);
+	upWaistPivot = offset * upWaistPivot;
+	btTransform upWaistUpFrame = upWaistBody->getWorldTransform().inverse() * upWaistPivot;
+	btTransform upWaistLoFrame = loWaistBody->getWorldTransform().inverse() * upWaistPivot;
+	btTypedConstraint *upWaistConstraint = new btFixedConstraint(*upWaistBody, *loWaistBody, upWaistUpFrame, upWaistLoFrame);
+	//loWaistConstraint->setLimit(btScalar(0.0), btScalar(M_PI_4), btScalar(M_PI_4));
+	m_ownerWorld->addConstraint(upWaistConstraint, true);
+	m_joints.push_back(upWaistConstraint);
+	m_parents.push_back(4);
+	//m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(1.0), btScalar(0.0)), 3)); // 0 ????
+	//m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0)), 3)); // 1
 
 	// Butt 4
 	btTransform buttTransform;
@@ -330,17 +343,39 @@ public:
 	buttTransform.setOrigin(vButtOrigin);
 	buttTransform.setRotation(btQuaternion(vAxis, M_PI_2));
 	btRigidBody *buttBody = localCreateRigidBody(btScalar(1.0), offset*buttTransform, buttShape);
+
+	btTransform loWaistPivot;
+	loWaistPivot.setIdentity();
+	loWaistPivot.setOrigin(vLWaist);
+	loWaistPivot = offset * loWaistPivot;
+	btTransform loWaistButtFrame = buttBody->getWorldTransform().inverse() * loWaistPivot;
+	btTransform loWaistLoFrame = loWaistBody->getWorldTransform().inverse() * loWaistPivot;
+	btConeTwistConstraint *loWaistConstraint = new btConeTwistConstraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
+	loWaistConstraint->setLimit(btScalar(0.0), btScalar(M_PI_4), btScalar(M_PI_4));
+	m_ownerWorld->addConstraint(loWaistConstraint, true);
+	m_joints.push_back(loWaistConstraint);
+	//m_parents.push_back(4);
+	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(1.0), btScalar(0.0)), 3)); // 0 ????
+	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0)), 3)); // 1
+
 	m_bodies.push_back(buttBody);
-	btVector3 pelvisPivot = offset * vPelvis;
-	btVector3 pelvisWaistFrame = loWaistBody->getWorldTransform().inverse() * pelvisPivot;
-	btVector3 pelvisButtFrame = buttBody->getWorldTransform().inverse() * pelvisPivot;
-	btVector3 pelvisAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
-	btHingeConstraint *pelvisConstraint = new btHingeConstraint(*loWaistBody, *buttBody, pelvisWaistFrame, pelvisButtFrame, pelvisAxis, pelvisAxis);
-	pelvisConstraint->setLimit(btScalar(-0.610865), btScalar(0.610865));
-	m_ownerWorld->addConstraint(pelvisConstraint, true);
-	m_joints.push_back(pelvisConstraint);
-	m_parents.push_back(3);
-	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0)), 4)); // 2
+	//btVector3 pelvisPivot = offset * vPelvis;
+	//btTransform pelvisPivot;
+	//pelvisPivot.setIdentity();
+	//pelvisPivot.setOrigin(vPelvis);
+	//pelvisPivot = offset * pelvisPivot;
+	////btVector3 pelvisWaistFrame = loWaistBody->getWorldTransform().inverse() * pelvisPivot;
+	////btVector3 pelvisButtFrame = buttBody->getWorldTransform().inverse() * pelvisPivot;
+	//btTransform pelvisWaistFrame = loWaistBody->getWorldTransform().inverse() * pelvisPivot;
+	//btTransform pelvisButtFrame = buttBody->getWorldTransform().inverse() * pelvisPivot;
+	////btVector3 pelvisAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
+	////btHingeConstraint *pelvisConstraint = new btHingeConstraint(*loWaistBody, *buttBody, pelvisWaistFrame, pelvisButtFrame, pelvisAxis, pelvisAxis);
+	//btTypedConstraint *pelvisConstraint = new btFixedConstraint(*loWaistBody, *buttBody, pelvisWaistFrame, pelvisButtFrame);
+	////pelvisConstraint->setLimit(btScalar(-0.610865), btScalar(0.610865));
+	//m_ownerWorld->addConstraint(pelvisConstraint, true);
+	//m_joints.push_back(pelvisConstraint);
+	m_parents.push_back(-1);
+	//m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0)), 4)); // 2
 
 	// Right Thigh 5
 	btTransform rThighTransform;
@@ -550,7 +585,7 @@ public:
 	btVector3 lElbowUpFrame = lUpArmBody->getWorldTransform().inverse() * lElbowPivot;
 	btVector3 lElbowLoFrame = lLoArmBody->getWorldTransform().inverse() * lElbowPivot;
 	btHingeConstraint *lElbowConstraint = new btHingeConstraint(*lUpArmBody, *lLoArmBody, lElbowUpFrame, lElbowLoFrame, lElbowAxis, lElbowAxis);
-	lElbowConstraint->setLimit(btScalar(-M_PI), btScalar(-0.05));
+	lElbowConstraint->setLimit(btScalar(-M_PI), btScalar(0.05));
 	m_ownerWorld->addConstraint(lElbowConstraint, true);
 	m_joints.push_back(lElbowConstraint);
 	m_parents.push_back(14);
@@ -760,11 +795,11 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
     }
     else {
 	// Print the location and rotation of the root joint
-	btTransform trans = m_rigs[0]->GetBodies()[0]->getWorldTransform();
+	btTransform trans = m_rigs[0]->GetBodies()[4]->getWorldTransform();
 	btVector3 t = trans.getOrigin();
 	btMatrix3x3 rootMat = trans.getBasis();
 	btScalar rootY, rootP, rootR;
-	rootMat.getEulerYPR(rootY, rootP, rootR);
+	rootMat.getEulerZYX(rootY, rootP, rootR);
 	buffer[idx++] = t[0];
 	buffer[idx++] = t[1];
 	buffer[idx++] = t[2];
@@ -785,10 +820,10 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		btRigidBody b = cone->getRigidBodyB();
 		btQuaternion orientationA = a.getOrientation();
 		btQuaternion orientationB = b.getOrientation();
-		btQuaternion orientation = orientationB * orientationA.inverse();
+		btQuaternion orientation = orientationB;// * orientationA.inverse();
 		btMatrix3x3 mat(orientation);
 		btScalar y,p,r;
-		mat.getEulerYPR(y,p,r);
+		mat.getEulerZYX(y,p,r);
 		buffer[idx++] = y;
 		buffer[idx++] = p;
 		buffer[idx++] = r;
@@ -802,9 +837,9 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 
 
     // Read the control from the socket
-    std::vector<double> c(16);
+    std::vector<double> c(15);
     char *buffPtr = newBuff;
-    while (buffPtr - newBuff < 16 * sizeof(float)) {
+    while (buffPtr - newBuff < 15 * sizeof(float)) {
 	n = read(clientSocket, buffPtr, 1000*sizeof(float));
 	buffPtr += n;
     }
@@ -817,7 +852,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
     }
 
     // If not, then apply the controls
-    for (int i=0; i<16; ++i) {
+    for (int i=0; i<15; ++i) {
 	c[i] = buffer[i];
     }
 
