@@ -228,6 +228,7 @@ public:
 	//
 	float fHeight = 1.4;
 	btTransform offset; offset.setIdentity();
+	offset.setRotation(btQuaternion(btVector3(0.0,1.0,0.0), -M_PI_2));
 	offset.setOrigin(positionOffset);		
 
 	// root
@@ -342,7 +343,7 @@ public:
 	btVector3 vButtOrigin = vPelvis + btVector3(btScalar(-0.02), btScalar(0.0), btScalar(0.0));
 	buttTransform.setOrigin(vButtOrigin);
 	buttTransform.setRotation(btQuaternion(vAxis, M_PI_2));
-	btRigidBody *buttBody = localCreateRigidBody(btScalar(1.0), offset*buttTransform, buttShape);
+	btRigidBody *buttBody = localCreateRigidBody(btScalar(0.0), offset*buttTransform, buttShape);
 
 	btTransform loWaistPivot;
 	loWaistPivot.setIdentity();
@@ -799,7 +800,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 	btVector3 t = trans.getOrigin();
 	btMatrix3x3 rootMat = trans.getBasis();
 	btScalar rootY, rootP, rootR;
-	rootMat.getEulerZYX(rootY, rootP, rootR);
+	rootMat.getEulerYPR(rootY, rootP, rootR);
 	buffer[idx++] = t[0];
 	buffer[idx++] = t[1];
 	buffer[idx++] = t[2];
@@ -816,17 +817,73 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 	    }
 	    btConeTwistConstraint *cone = dynamic_cast<btConeTwistConstraint*>(constraint);
 	    if (cone != 0) {
-		btRigidBody a = cone->getRigidBodyA();
+	        btRigidBody a = cone->getRigidBodyA();
 		btRigidBody b = cone->getRigidBodyB();
+		btQuaternion worldAxis(btVector3(0.0,1.0,0.0),-M_PI);
+		btQuaternion axis(0,0,0);
+		btQuaternion rot(0,0,0);
+		btQuaternion root(-90*M_PI/180,0,0);
+		if (i == 4) { // RUpLeg
+	            axis.setEulerZYX(0,0,-20*M_PI/180);
+                }
+		else if (i == 7) { // LUpLeg
+	            axis.setEulerZYX(0,0,20*M_PI/180);
+                }
+		else if (i == 10) { // RShldr - Becomes LShldr in the mocap data
+	            btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
+	            axis.setEulerZYX(30*M_PI/180,180*M_PI/180,90*M_PI/180);
+		    axis = btQuaternion(0,0,-90*M_PI/180)*btQuaternion(-30*M_PI/180,0,0)*btQuaternion(0,180*M_PI/180,0);
+		    //rot = btQuaternion(vAxis,M_PI_2);
+		    rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
+		    //rot.setEulerZYX(120,80,20);
+		    //axis = rot * axis;
+		    //axis.setEulerZYX(0,0,0);
+		    //axis = axis * rot.inverse();
+                }
+		else if (i == 13) { // LShldr
+	            btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
+	            axis.setEulerZYX(30*M_PI/180,180*M_PI/180,90*M_PI/180);
+		    axis = btQuaternion(0,0,90*M_PI/180)*btQuaternion(30*M_PI/180,0,0)*btQuaternion(0,180*M_PI/180,0);
+		    rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
+                }
 		btQuaternion orientationA = a.getOrientation();
 		btQuaternion orientationB = b.getOrientation();
-		btQuaternion orientation = orientationB;// * orientationA.inverse();
+		//btQuaternion orientation = rot.inverse() * orientationB.inverse();// * orientationA.inverse();
+		//btQuaternion orientation = axis.inverse() * orientationB.inverse();
+		btQuaternion orientation = axis.inverse() * (root.inverse() * rot.inverse() * orientationB * root).inverse() * axis;
 		btMatrix3x3 mat(orientation);
 		btScalar y,p,r;
 		mat.getEulerZYX(y,p,r);
+		//y = orientation.x();
+		//p = orientation.y();
+		//r = orientation.z();
 		buffer[idx++] = y;
 		buffer[idx++] = p;
 		buffer[idx++] = r;
+		mat.getEulerYPR(y,p,r);
+		static int itr = 0;
+		if (i == 10) {
+		    ++itr;
+		    if (itr % 10 == 1) {
+			std::cout << "YPR: " << y*180/M_PI << ", " << p*180/M_PI << ", " << r*180/M_PI << "\n";
+			btMatrix3x3 pInv = btMatrix3x3(orientationB);
+			btMatrix3x3 a = btMatrix3x3(root);
+			std::cout << "Pinv:\n";
+			for (int row = 0; row < 3; ++row) {
+	                    for (int column = 0; column < 3; ++column) {
+	                        std::cout << pInv[row][column] << " ";
+                            }
+			    std::cout << "\n";
+			}
+			std::cout << "A: \n";
+			for (int row = 0; row < 3; ++row) {
+	                    for (int column = 0; column < 3; ++column) {
+	                        std::cout << a[row][column] << " ";
+                            }
+			    std::cout << "\n";
+			}
+		    }
+		}
 	    }
 	}
     }

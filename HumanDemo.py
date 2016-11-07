@@ -5,6 +5,39 @@ import time
 
 import numpy as np
 
+def degrees(rad):
+    return rad * 180 / np.pi
+
+def quat2equatorial(q):
+      """
+      Determine Right Ascension, Declination, and Roll for the object quaternion
+      
+      :returns: RA, Dec, Roll
+      :rtype: numpy array [ra,dec,roll]
+      """
+      
+      q = q
+      q2 = q**2
+
+      ## calculate direction cosine matrix elements from $quaternions
+      xa = q2[0] - q2[1] - q2[2] + q2[3] 
+      xb = 2 * (q[0] * q[1] + q[2] * q[3]) 
+      xn = 2 * (q[0] * q[2] - q[1] * q[3]) 
+      yn = 2 * (q[1] * q[2] + q[0] * q[3]) 
+      zn = q2[3] + q2[2] - q2[0] - q2[1] 
+
+      ##; calculate RA, Dec, Roll from cosine matrix elements
+      ra   = degrees(np.arctan2(xb , xa)) ;
+      dec  = degrees(np.arctan2(xn , np.sqrt(1 - xn**2)));
+      roll = degrees(np.arctan2(yn , zn)) ;
+      #if ( ra < 0 ):
+      #   ra += 360
+      #if ( roll < 0 ):
+      #   roll += 360
+
+      return np.array([ra, dec, roll])
+
+
 def convertToAMC(states):
 
     # Set up the skeleton information
@@ -21,21 +54,22 @@ def convertToAMC(states):
         for j in joints:
             data[j[0]] = [0.0]*j[1]
         c=180.0/np.pi
+        #c = 1.0
 
         # Fill in the data that we have
         s = list(state)
         #s.insert(0,0.0)
         #s.insert(2,0.0)
-        #data['root'] = [s[0],s[1],s[2],c*s[3],c*s[5],c*s[4]]
+        #data['root'] = [s[0],s[1],s[2],-c*s[3],-c*s[5],-c*s[4]]
         #data['lowerback'] = [c*s[6],-c*s[7],c*s[8]-90]
-        data['rhumerus'] = [c*s[17]-30,c*s[18],c*s[19]-90]
-        data['rradius'] = [-c*s[20]]
-        data['lhumerus'] = [c*s[21]-30,c*s[22],c*s[23]-90]
-        data['lradius'] = [-c*s[24]]
-        data['rfemur'] = [-c*s[9],c*s[10],-c*s[11]+15]
-        data['rtibia'] = [c*s[12]]
-        data['lfemur'] = [-c*s[13],c*s[14],-c*s[15]-15]
-        data['ltibia'] = [c*s[16]]
+        data['lhumerus'] = [c*s[19],c*s[18],c*s[17]]
+        data['lradius'] = [-c*s[20]]
+        data['rhumerus'] = [c*s[23],c*s[22],c*s[21]]
+        data['rradius'] = [-c*s[24]]
+        #data['rfemur'] = [c*s[9],c*s[10],c*s[11]]
+        #data['rtibia'] = [c*s[12]]
+        #data['lfemur'] = [c*s[13],c*s[14],c*s[15]]
+        #data['ltibia'] = [c*s[16]]
 
         frames.append(data)
 
@@ -85,6 +119,10 @@ try:
 
         if amc is None:
             states.append(state)
+        #q = np.asarray([state[9],state[10],state[11],np.sqrt(1-state[9]**2-state[10]**2-state[11]**2)])
+        #r = quat2equatorial(q)
+        #if iteration % 10 == 0:
+        #    print('YPR: '+str(r[0])+' '+str(r[1])+' '+str(r[2]))
 
         if iteration % 200000 == 0:
             print('Iteration '+str(iteration))
