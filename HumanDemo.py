@@ -66,10 +66,15 @@ def convertToAMC(states):
         data['lradius'] = [-c*s[20]]
         data['rhumerus'] = [c*s[23],c*s[22],c*s[21]]
         data['rradius'] = [-c*s[24]]
-        #data['rfemur'] = [c*s[9],c*s[10],c*s[11]]
-        #data['rtibia'] = [c*s[12]]
-        #data['lfemur'] = [c*s[13],c*s[14],c*s[15]]
-        #data['ltibia'] = [c*s[16]]
+        data['rfemur'] = [c*s[13],c*s[14],c*s[15]]
+        data['rtibia'] = [c*s[16]]
+        data['lfemur'] = [c*s[9],c*s[10],c*s[11]]
+        data['ltibia'] = [c*s[12]]
+
+        #data['lhumerus'] = [c*s[16],c*s[15],c*s[14]]
+        #data['lradius'] = [-c*s[17]]
+        #data['rhumerus'] = [c*s[20],c*s[19],c*s[18]]
+        #data['rradius'] = [-c*s[21]]
 
         frames.append(data)
 

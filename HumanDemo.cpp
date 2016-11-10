@@ -228,7 +228,8 @@ public:
 	//
 	float fHeight = 1.4;
 	btTransform offset; offset.setIdentity();
-	offset.setRotation(btQuaternion(btVector3(0.0,1.0,0.0), -M_PI_2));
+	//offset.setRotation(btQuaternion(btVector3(0.0,1.0,0.0), -M_PI_4));
+	//offset.setRotation(btQuaternion(btVector3(1.0,0.0,0.0), -M_PI_4));
 	offset.setOrigin(positionOffset);		
 
 	// root
@@ -239,7 +240,7 @@ public:
 	transform.setOrigin(vRoot);
 	transform.setRotation(btQuaternion(vAxis, M_PI_2));
 
-	btMatrix3x3 tempMat = transform.getBasis();
+	btMatrix3x3 tempMat = offset.getBasis();
 	std::cout << "Root matrix:\n";
 	for (int i = 0; i < 3; ++i) {
 	    std::cout << tempMat[i][0] << "\t" << tempMat[i][1] << "\t" << tempMat[i][2] << "\n";
@@ -283,7 +284,7 @@ public:
 	headTransform.setIdentity();
 	btVector3 vHeadOrigin = vRoot + btVector3(btScalar(0.0), btScalar(0.19), btScalar(0.0));
 	headTransform.setOrigin(vHeadOrigin);
-	btRigidBody *headBody = localCreateRigidBody(btScalar(0.0), offset*headTransform, headShape);
+	btRigidBody *headBody = localCreateRigidBody(btScalar(1.0), offset*headTransform, headShape);
 	m_bodies.push_back(headBody);
 	btTransform neckPivot;
 	neckPivot.setIdentity();
@@ -352,7 +353,8 @@ public:
 	btTransform loWaistButtFrame = buttBody->getWorldTransform().inverse() * loWaistPivot;
 	btTransform loWaistLoFrame = loWaistBody->getWorldTransform().inverse() * loWaistPivot;
 	btConeTwistConstraint *loWaistConstraint = new btConeTwistConstraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
-	loWaistConstraint->setLimit(btScalar(0.0), btScalar(M_PI_4), btScalar(M_PI_4));
+	//btTypedConstraint *loWaistConstraint = new btFixedConstraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
+	//loWaistConstraint->setLimit(btScalar(0.0), btScalar(M_PI_4), btScalar(M_PI_4));
 	m_ownerWorld->addConstraint(loWaistConstraint, true);
 	m_joints.push_back(loWaistConstraint);
 	//m_parents.push_back(4);
@@ -734,10 +736,10 @@ void HumanDemo::initPhysics()
     }
 
     // Spawn one ragdoll
-    btVector3 startOffset(0,0,-0.2);
+    btVector3 startOffset(0,2,-0.2);
     spawnHumanRig(startOffset, false);
 
-    if (m_guiHelper != 0) {
+    if (m_guiHelper != 0) { 
 	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
     }
 }
@@ -823,18 +825,42 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		btQuaternion axis(0,0,0);
 		btQuaternion rot(0,0,0);
 		btQuaternion root(-90*M_PI/180,0,0);
+		btQuaternion undo(0,-90*M_PI/180,0);
+		btQuaternion conv(-90*M_PI/180,0,0);
+		btQuaternion orientationA = a.getOrientation();
+		btQuaternion orientationB = b.getOrientation();
+		bool flip = false;
+		bool flipX = false;
 		if (i == 4) { // RUpLeg
-	            axis.setEulerZYX(0,0,-20*M_PI/180);
+		    btQuaternion pRot = m_rigs[0]->GetBodies()[4]->getWorldTransform().getRotation();
+		    btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
+	            axis.setEulerZYX(20*M_PI/180,0,0);
+		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
+		    conv = btQuaternion(0,0,0);
+		    rot = btQuaternion(vAxis,-20*M_PI/180);
+		    flip = true;
+		    flipX = true;
                 }
 		else if (i == 7) { // LUpLeg
-	            axis.setEulerZYX(0,0,20*M_PI/180);
+		    btQuaternion pRot = m_rigs[0]->GetBodies()[4]->getWorldTransform().getRotation();
+		    btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
+	            axis.setEulerZYX(-20*M_PI/180,0,0);
+		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
+		    conv = btQuaternion(0,0,0);
+		    rot = btQuaternion(vAxis,20*M_PI/180);
+		    flip = true;
+		    flipX = true;
                 }
 		else if (i == 10) { // RShldr - Becomes LShldr in the mocap data
 	            btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
-	            axis.setEulerZYX(30*M_PI/180,180*M_PI/180,90*M_PI/180);
+		    btQuaternion pRot = m_rigs[0]->GetBodies()[0]->getWorldTransform().getRotation();
+	            //axis.setEulerZYX(30*M_PI/180,180*M_PI/180,90*M_PI/180);
 		    axis = btQuaternion(0,0,-90*M_PI/180)*btQuaternion(-30*M_PI/180,0,0)*btQuaternion(0,180*M_PI/180,0);
-		    //rot = btQuaternion(vAxis,M_PI_2);
-		    rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
+		    rot = btQuaternion(vAxis,M_PI_2);
+		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
+		    //root = btQuaternion(180*M_PI/180,0,-90*M_PI/180);
+		    //root = pRot.inverse() * root;
+		    //rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
 		    //rot.setEulerZYX(120,80,20);
 		    //axis = rot * axis;
 		    //axis.setEulerZYX(0,0,0);
@@ -842,17 +868,38 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
                 }
 		else if (i == 13) { // LShldr
 	            btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
+		    btQuaternion pRot = m_rigs[0]->GetBodies()[0]->getWorldTransform().getRotation();
 	            axis.setEulerZYX(30*M_PI/180,180*M_PI/180,90*M_PI/180);
 		    axis = btQuaternion(0,0,90*M_PI/180)*btQuaternion(30*M_PI/180,0,0)*btQuaternion(0,180*M_PI/180,0);
-		    rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
+		    //root = btQuaternion(180*M_PI/180,0,-90*M_PI/180);
+		    //root = pRot.inverse() * root;
+		    rot = btQuaternion(vAxis,M_PI_2);
+		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
+		    flip = true;
+		    //orientationB = orientationB;
+		    //rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
+		    //rot = rot * pRot * rot.inverse();
+		    //rot = pRot.inverse() * rot;
                 }
-		btQuaternion orientationA = a.getOrientation();
-		btQuaternion orientationB = b.getOrientation();
 		//btQuaternion orientation = rot.inverse() * orientationB.inverse();// * orientationA.inverse();
 		//btQuaternion orientation = axis.inverse() * orientationB.inverse();
-		btQuaternion orientation = axis.inverse() * (root.inverse() * rot.inverse() * orientationB * root).inverse() * axis;
-		btMatrix3x3 mat(orientation);
+		//btQuaternion orientation = axis.inverse() * (root.inverse() * rot.inverse() * orientationB * root).inverse() * axis;
 		btScalar y,p,r;
+		btQuaternion temp = conv * rot.inverse() * undo.inverse() *  orientationB * conv.inverse();
+		//if (flip) {
+		//    temp = conv * (rot.inverse() * undo.inverse() *  orientationB).inverse() * conv.inverse();
+		//}
+		btMatrix3x3 global(temp);
+		global.getEulerZYX(y,p,r);
+		if (flip) {
+		    r = -r;
+		}
+		if (flipX) {
+		    y = -y;
+		}
+		btQuaternion temp2 = btQuaternion(0,r,0)*btQuaternion(p,0,0)*btQuaternion(0,0,y);
+		btQuaternion orientation = axis.inverse() * temp2 * axis;
+		btMatrix3x3 mat(orientation);
 		mat.getEulerZYX(y,p,r);
 		//y = orientation.x();
 		//p = orientation.y();
@@ -862,12 +909,13 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		buffer[idx++] = r;
 		mat.getEulerYPR(y,p,r);
 		static int itr = 0;
-		if (i == 10) {
+		if (i == 13) {
 		    ++itr;
 		    if (itr % 10 == 1) {
 			std::cout << "YPR: " << y*180/M_PI << ", " << p*180/M_PI << ", " << r*180/M_PI << "\n";
+			btTransform parentTrans = m_rigs[0]->GetBodies()[0]->getWorldTransform();
 			btMatrix3x3 pInv = btMatrix3x3(orientationB);
-			btMatrix3x3 a = btMatrix3x3(root);
+			btMatrix3x3 a = btMatrix3x3(temp2);
 			std::cout << "Pinv:\n";
 			for (int row = 0; row < 3; ++row) {
 	                    for (int column = 0; column < 3; ++column) {
