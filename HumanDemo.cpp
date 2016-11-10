@@ -344,7 +344,7 @@ public:
 	btVector3 vButtOrigin = vPelvis + btVector3(btScalar(-0.02), btScalar(0.0), btScalar(0.0));
 	buttTransform.setOrigin(vButtOrigin);
 	buttTransform.setRotation(btQuaternion(vAxis, M_PI_2));
-	btRigidBody *buttBody = localCreateRigidBody(btScalar(0.0), offset*buttTransform, buttShape);
+	btRigidBody *buttBody = localCreateRigidBody(btScalar(1.0), offset*buttTransform, buttShape);
 
 	btTransform loWaistPivot;
 	loWaistPivot.setIdentity();
@@ -736,7 +736,7 @@ void HumanDemo::initPhysics()
     }
 
     // Spawn one ragdoll
-    btVector3 startOffset(0,2,-0.2);
+    btVector3 startOffset(0,-0.1,-0.2);
     spawnHumanRig(startOffset, false);
 
     if (m_guiHelper != 0) { 
@@ -837,8 +837,8 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 	            axis.setEulerZYX(20*M_PI/180,0,0);
 		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
 		    conv = btQuaternion(0,0,0);
-		    rot = btQuaternion(vAxis,-20*M_PI/180);
-		    flip = true;
+		    rot = btQuaternion(vAxis,20*M_PI/180);
+		    //flip = true;
 		    flipX = true;
                 }
 		else if (i == 7) { // LUpLeg
@@ -847,8 +847,8 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 	            axis.setEulerZYX(-20*M_PI/180,0,0);
 		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
 		    conv = btQuaternion(0,0,0);
-		    rot = btQuaternion(vAxis,20*M_PI/180);
-		    flip = true;
+		    rot = btQuaternion(vAxis,-20*M_PI/180);
+		    //flip = true;
 		    flipX = true;
                 }
 		else if (i == 10) { // RShldr - Becomes LShldr in the mocap data
@@ -909,13 +909,13 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		buffer[idx++] = r;
 		mat.getEulerYPR(y,p,r);
 		static int itr = 0;
-		if (i == 13) {
+		if (i == 4) {
 		    ++itr;
 		    if (itr % 10 == 1) {
 			std::cout << "YPR: " << y*180/M_PI << ", " << p*180/M_PI << ", " << r*180/M_PI << "\n";
 			btTransform parentTrans = m_rigs[0]->GetBodies()[0]->getWorldTransform();
 			btMatrix3x3 pInv = btMatrix3x3(orientationB);
-			btMatrix3x3 a = btMatrix3x3(temp2);
+			btMatrix3x3 a = btMatrix3x3(axis);
 			std::cout << "Pinv:\n";
 			for (int row = 0; row < 3; ++row) {
 	                    for (int column = 0; column < 3; ++column) {
