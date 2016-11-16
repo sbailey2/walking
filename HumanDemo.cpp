@@ -241,17 +241,17 @@ public:
 	transform.setRotation(btQuaternion(vAxis, M_PI_2));
 
 	btMatrix3x3 tempMat = offset.getBasis();
-	std::cout << "Root matrix:\n";
+	//std::cout << "Root matrix:\n";
 	for (int i = 0; i < 3; ++i) {
-	    std::cout << tempMat[i][0] << "\t" << tempMat[i][1] << "\t" << tempMat[i][2] << "\n";
+	    //std::cout << tempMat[i][0] << "\t" << tempMat[i][1] << "\t" << tempMat[i][2] << "\n";
 	}
 	btScalar y,p,r;
 	tempMat.getEulerYPR(y,p,r);
-	std::cout << "YPR representation:\n";
-	std::cout << y << "\t" << p << "\t" << r << "\n";
+	//std::cout << "YPR representation:\n";
+	//std::cout << y << "\t" << p << "\t" << r << "\n";
 	tempMat.getEulerZYX(y,p,r);
-	std::cout << "ZYX representation\n";
-	std::cout << y << "\t" << p << "\t" << r << "\n";
+	//std::cout << "ZYX representation\n";
+	//std::cout << y << "\t" << p << "\t" << r << "\n";
 
 	btVector3 vLWaist = vRoot + btVector3(btScalar(-0.01), btScalar(-0.26), btScalar(0.0));
 	btVector3 vPelvis = vLWaist + btVector3(btScalar(0.0), btScalar(-0.165), btScalar(0.0));
@@ -824,9 +824,9 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		btQuaternion worldAxis(btVector3(0.0,1.0,0.0),-M_PI);
 		btQuaternion axis(0,0,0);
 		btQuaternion rot(0,0,0);
-		btQuaternion root(-90*M_PI/180,0,0);
-		btQuaternion undo(0,-90*M_PI/180,0);
-		btQuaternion conv(-90*M_PI/180,0,0);
+		btQuaternion root(0,0,0);
+		btQuaternion undo(0,0,0);
+		btQuaternion conv(0,0,0);
 		btQuaternion orientationA = a.getOrientation();
 		btQuaternion orientationB = b.getOrientation();
 		bool flip = false;
@@ -858,6 +858,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		    axis = btQuaternion(0,0,-90*M_PI/180)*btQuaternion(-30*M_PI/180,0,0)*btQuaternion(0,180*M_PI/180,0);
 		    rot = btQuaternion(vAxis,M_PI_2);
 		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
+		    conv = btQuaternion(-90*M_PI/180,0,0);
 		    //root = btQuaternion(180*M_PI/180,0,-90*M_PI/180);
 		    //root = pRot.inverse() * root;
 		    //rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
@@ -873,6 +874,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		    axis = btQuaternion(0,0,90*M_PI/180)*btQuaternion(30*M_PI/180,0,0)*btQuaternion(0,180*M_PI/180,0);
 		    //root = btQuaternion(180*M_PI/180,0,-90*M_PI/180);
 		    //root = pRot.inverse() * root;
+		    conv = btQuaternion(-90*M_PI/180,0,0);
 		    rot = btQuaternion(vAxis,M_PI_2);
 		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
 		    flip = true;
@@ -912,23 +914,23 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		if (i == 4) {
 		    ++itr;
 		    if (itr % 10 == 1) {
-			std::cout << "YPR: " << y*180/M_PI << ", " << p*180/M_PI << ", " << r*180/M_PI << "\n";
+			//std::cout << "YPR: " << y*180/M_PI << ", " << p*180/M_PI << ", " << r*180/M_PI << "\n";
 			btTransform parentTrans = m_rigs[0]->GetBodies()[0]->getWorldTransform();
 			btMatrix3x3 pInv = btMatrix3x3(orientationB);
 			btMatrix3x3 a = btMatrix3x3(axis);
-			std::cout << "Pinv:\n";
+			//std::cout << "Pinv:\n";
 			for (int row = 0; row < 3; ++row) {
 	                    for (int column = 0; column < 3; ++column) {
-	                        std::cout << pInv[row][column] << " ";
+	                        //std::cout << pInv[row][column] << " ";
                             }
-			    std::cout << "\n";
+			    //std::cout << "\n";
 			}
-			std::cout << "A: \n";
+			//std::cout << "A: \n";
 			for (int row = 0; row < 3; ++row) {
 	                    for (int column = 0; column < 3; ++column) {
-	                        std::cout << a[row][column] << " ";
+	                        //std::cout << a[row][column] << " ";
                             }
-			    std::cout << "\n";
+			    //std::cout << "\n";
 			}
 		    }
 		}

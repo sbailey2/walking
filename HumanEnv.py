@@ -1,109 +1,58 @@
-"""
-OpenAI Gym environment for the humanoid skeleton simulation running in Bullet physics engine
-"""
-
-import socket
-import sys
-import struct
-
-import logging
-import math
+#from rllab.envs.base import Env
+#from rllab.spaces import Box
+#from rllab.envs.base import Step
 import gym
-from gym import spaces
-from gym.utils import seeding
+from gym import Env
+from gym.spaces import Box
 import numpy as np
-
-from gym.envs.registration import register
+#from rllab.core.serializable import Serializable
+import socket
+import struct
+import logging
 
 logger = logging.getLogger(__name__)
 
-register(
-    id='HumanEnv-v0',
-    entry_point='HumanEnv:HumanEnv',
-    timestep_limit=1000,
-    reward_threshold=400.0,
-)
+class HumanEnv(Env):
 
-class HumanEnv(gym.Env):
-    metadata = {
-        'render.modes': [],
-        'video.frames_per_second' : 60
-    }
-
-    def __init__(self):
-
+    def __init__(self, window=1, hold=1, log_dir=None, record_log=True):
+        #Serializable.quick_init(self, locals())
         # Connect to the simulation in Bullet
-        HOST, PORT = 'localhost', 47138
+        self.HOST, self.PORT = 'localhost', 47138
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.connect((HOST, PORT))
+        self.s.connect((self.HOST, self.PORT))
         self.s.send(b'Hello!')
 
         # Height at which to fail the episode
         self.y_threshold = 0.5
 
-        self.action_space = spaces.Box(-1.5,1.5,(16,))
-        self.observation_space = spaces.Box(-1e6,1e6,(24,))
+        # Number of frames to concatenate together in the state
+        self.window = window
+        self.dim = 25
+        self.usedDim = self.process(np.ones(self.dim)).shape[0]
+        self.state = np.zeros(self.usedDim*window)
 
-        self._seed()
-        self.reset()
-        self.viewer = None
-        self.lastX = 0.0
+        # Number of frames to apply the same input
+        self.hold = hold
 
-        self.steps_beyond_done = None
+    def restore_socket(self):
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.connect((self.HOST, self.PORT))
+        self.s.send(b'Hello!')
 
-        # Just need to initialize the relevant attributes
-        self._configure()
+    @property
+    def observation_space(self):
+        return Box(low=-1e6, high=1e6, shape=(self.usedDim*self.window,))
 
-    def _configure(self, display=None):
-        self.display = display
+    @property
+    def action_space(self):
+        return Box(low=-0.5, high=0.5, shape=(15,))
 
-    def _seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
+    def process(self, state):
+        mask = np.ones(self.dim).astype(bool)
+        mask[[0,2]] = False # Drop the x and z coordinates of the root joint
+        return state[mask]
 
-    def _step(self, action):
-        assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
-        state = self.state
-        
-        # Apply the action
-        c = np.asarray(action)
-        buff = struct.pack('%sf' % len(c), *c)
-        self.s.send(buff)
-
-        # Receive the state
-        stateSize = self.s.recv(4);
-        stateSize = struct.unpack('i',stateSize)[0]
-        state = self.s.recv(1000)
-        while len(state) < stateSize:
-            state += self.s.recv(1000)
-        state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
-
-        # Get the y position of the root joint
-        y = state[1]
-        reward = state[2] - self.lastX 
-        self.lastX = state[2]
-        usedStates = np.ones(state.shape[0]).astype(bool)
-        usedstates[0] = False
-        usedStates[2] = False
-        state = state[usedStates]
-        
-        done = y < self.y_threshold
-
-        if not done:
-            pass
-        elif self.steps_beyond_done is None:
-            self.steps_beyond_done = 0
-            reward = 1.0
-        else:
-            if self.steps_beyond_done == 0:
-                logger.warn("You are calling 'step()' even though this environment has already returned done = True. You should always call 'reset()' once you receive 'done = True' -- any further steps are undefined behavior.")
-            self.steps_beyond_done += 1
-            reward = 0.0
-
-        return np.array(self.state), reward, done, {}
-
-    def _reset(self):
-
+    def reset(self):
         # Reset the simulation
         self.s.send(b'RESET')
         zeros = np.zeros(20).astype(int)
@@ -117,9 +66,12 @@ class HumanEnv(gym.Env):
         while len(state) < stateSize:
             state += self.s.recv(1000)
         state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+        self.state = np.zeros(self.usedDim*self.window)
+        #self.state[self.usedDim*(self.window-1):] = state
+        #print(state)
 
-        # Apply a random control to just have a new initialization every time
-        c = np.random.uniform(-0.5,0.5,16)
+        # Go one more step because the current state is invalid
+        c = np.zeros(15)
         buff = struct.pack('%sf' % len(c), *c)
         self.s.send(buff)
 
@@ -129,11 +81,56 @@ class HumanEnv(gym.Env):
         state = self.s.recv(1000)
         while len(state) < stateSize:
             state += self.s.recv(1000)
-        self.state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+        state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+        self.state[self.usedDim*(self.window-1):] = self.process(state)
+        print(self.state)
+        print(self.usedDim)
 
         self.steps_beyond_done = None
-        self.lastX = state[2]
         return np.array(self.state)
 
-    def _render(self, mode='human', close=False):
-        pass
+    def step(self, action):
+        assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
+        state = self.state
+        
+        # Apply the action
+        for _ in range(self.hold):
+            c = np.asarray(action)
+            buff = struct.pack('%sf' % len(c), *c)
+            self.s.send(buff)
+
+            # Receive the state
+            stateSize = self.s.recv(4);
+            stateSize = struct.unpack('i',stateSize)[0]
+            state = self.s.recv(1000)
+            while len(state) < stateSize:
+                state += self.s.recv(1000)
+            state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+        
+        # Update the state
+        self.state[:self.usedDim*(self.window-1)] = self.state[self.usedDim:]
+        self.state[self.usedDim*(self.window-1):] = self.process(state)
+
+        # Get the y position of the root joint
+        y = state[1]
+        done = y < self.y_threshold
+
+        if not done:
+            reward = 1.0
+        elif self.steps_beyond_done is None:
+            # skeleton just fell!
+            self.steps_beyond_done = 0
+            reward = -100.0
+        else:
+            if self.steps_beyond_done == 0:
+                logger.warn("You are calling 'step()' even though this environment has already returned done = True. You should always call 'reset()' once you receive 'done = True' -- any further steps are undefined behavior.")
+            self.steps_beyond_done += 1
+            reward = 0.0
+
+        next_observation = np.array(self.state)
+        self.state = next_observation
+        #return Step(observation=next_observation, reward=reward, done=done)
+        return np.array(self.state), reward, done, {}
+
+    def render(self,mode='human',close=False):
+        print (self.state[0:4])
