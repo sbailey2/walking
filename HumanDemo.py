@@ -105,6 +105,8 @@ iteration = 0
 #while True:
 states = []
 amc = None
+c = np.zeros(15)
+alpha = 0.9
 try:
     while True:
 
@@ -118,12 +120,13 @@ try:
         #if i % 20 == 0:
         #    print('State:')
         #    print(state)
-        c = 0*np.random.uniform(-0.1,0.1,15)
+        newC = 0.5*np.random.uniform(-1.0,1.0,15)
+        c = alpha*c + (1-alpha)*newC
         buff = struct.pack('%sf' % len(c), *c)
         iteration += 1
 
-        if amc is None:
-            states.append(state)
+        #if amc is None:
+        #    states.append(state)
         #q = np.asarray([state[9],state[10],state[11],np.sqrt(1-state[9]**2-state[10]**2-state[11]**2)])
         #r = quat2equatorial(q)
         #if iteration % 10 == 0:
@@ -143,7 +146,7 @@ except KeyboardInterrupt:
     pass
 s.close()
         
-amc = convertToAMC(states)
+"""amc = convertToAMC(states)
 fileName='simTest.amc'
 with open(fileName,'w') as file:
-    file.write(amc)
+    file.write(amc)"""

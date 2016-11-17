@@ -158,8 +158,12 @@ class HumanRig
 
 	btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
-	rbInfo.m_friction = 1.0f;
+	rbInfo.m_friction = btScalar(1.0);
+	rbInfo.m_linearDamping = btScalar(0.9);
+	rbInfo.m_angularDamping = btScalar(0.9);
+	
 	btRigidBody* body = new btRigidBody(rbInfo);
+	//std::cout << "Angular damping: " << body->getAngularDamping() << "\n";
 
 	m_ownerWorld->addRigidBody(body);
 
@@ -230,6 +234,7 @@ public:
 	btTransform offset; offset.setIdentity();
 	//offset.setRotation(btQuaternion(btVector3(0.0,1.0,0.0), -M_PI_4));
 	//offset.setRotation(btQuaternion(btVector3(1.0,0.0,0.0), -M_PI_4));
+	offset.setRotation(btQuaternion(btVector3(0.0,0.0,1.0), -0.05));
 	offset.setOrigin(positionOffset);		
 
 	// root
@@ -354,7 +359,7 @@ public:
 	btTransform loWaistLoFrame = loWaistBody->getWorldTransform().inverse() * loWaistPivot;
 	btConeTwistConstraint *loWaistConstraint = new btConeTwistConstraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
 	//btTypedConstraint *loWaistConstraint = new btFixedConstraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
-	//loWaistConstraint->setLimit(btScalar(0.0), btScalar(M_PI_4), btScalar(M_PI_4));
+	loWaistConstraint->setLimit(btScalar(0.0), btScalar(M_PI_4/2), btScalar(M_PI_4/2));
 	m_ownerWorld->addConstraint(loWaistConstraint, true);
 	m_joints.push_back(loWaistConstraint);
 	//m_parents.push_back(4);
@@ -394,7 +399,7 @@ public:
 	btTransform rHipThighFrame = rThighBody->getWorldTransform().inverse() * rHipPivot;
 	btTransform rHipButtFrame = buttBody->getWorldTransform().inverse() * rHipPivot;
 	btConeTwistConstraint *rHipConstraint = new btConeTwistConstraint(*buttBody, *rThighBody, rHipButtFrame, rHipThighFrame);
-	rHipConstraint->setLimit(btScalar(M_PI_2), btScalar(0), btScalar(M_PI_2));
+	rHipConstraint->setLimit(btScalar(M_PI_4), btScalar(0), btScalar(M_PI_4));
 	m_ownerWorld->addConstraint(rHipConstraint, true);
 	m_joints.push_back(rHipConstraint);
 	m_parents.push_back(4);
@@ -413,7 +418,7 @@ public:
 	btVector3 rKneeShinFrame = rShinBody->getWorldTransform().inverse() * rKneePivot;
 	btVector3 rKneeAxis = btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0));
 	btHingeConstraint *rKneeConstraint = new btHingeConstraint(*rThighBody, *rShinBody, rKneeThighFrame, rKneeShinFrame, rKneeAxis, rKneeAxis);
-	rKneeConstraint->setLimit(btScalar(-0.05), btScalar(M_PI));
+	rKneeConstraint->setLimit(btScalar(-0.05), btScalar(M_PI_4));
 	m_ownerWorld->addConstraint(rKneeConstraint, true);
 	m_joints.push_back(rKneeConstraint);
 	m_parents.push_back(5);
@@ -451,7 +456,7 @@ public:
 	btTransform lHipThighFrame = lThighBody->getWorldTransform().inverse() * lHipPivot;
 	btTransform lHipButtFrame = buttBody->getWorldTransform().inverse() * lHipPivot;
 	btConeTwistConstraint *lHipConstraint = new btConeTwistConstraint(*buttBody, *lThighBody, lHipButtFrame, lHipThighFrame);
-	lHipConstraint->setLimit(btScalar(M_PI_2), btScalar(0.0), btScalar(M_PI_2));
+	lHipConstraint->setLimit(btScalar(M_PI_4), btScalar(0.0), btScalar(M_PI_4));
 	m_ownerWorld->addConstraint(lHipConstraint, true);
 	m_joints.push_back(lHipConstraint);
 	m_parents.push_back(4);
@@ -470,7 +475,7 @@ public:
 	btVector3 lKneeShinFrame = lShinBody->getWorldTransform().inverse() * lKneePivot;
 	btVector3 lKneeAxis = btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0));
 	btHingeConstraint *lKneeConstraint = new btHingeConstraint(*lThighBody, *lShinBody, lKneeThighFrame, lKneeShinFrame, lKneeAxis, lKneeAxis);
-	lKneeConstraint->setLimit(btScalar(-0.05), btScalar(M_PI));
+	lKneeConstraint->setLimit(btScalar(-0.05), btScalar(M_PI_4));
 	m_ownerWorld->addConstraint(lKneeConstraint, true);
 	m_joints.push_back(lKneeConstraint);
 	m_parents.push_back(8);
@@ -529,7 +534,7 @@ public:
 	btVector3 rElbowUpFrame = rUpArmBody->getWorldTransform().inverse() * rElbowPivot;
 	btVector3 rElbowLoFrame = rLoArmBody->getWorldTransform().inverse() * rElbowPivot;
 	btHingeConstraint *rElbowConstraint = new btHingeConstraint(*rUpArmBody, *rLoArmBody, rElbowUpFrame, rElbowLoFrame, rElbowAxis, rElbowAxis);
-	rElbowConstraint->setLimit(btScalar(-M_PI), btScalar(0.05));
+	rElbowConstraint->setLimit(btScalar(-M_PI_2), btScalar(0.05));
 	m_ownerWorld->addConstraint(rElbowConstraint, true);
 	m_joints.push_back(rElbowConstraint);
 	m_parents.push_back(11);
@@ -588,7 +593,7 @@ public:
 	btVector3 lElbowUpFrame = lUpArmBody->getWorldTransform().inverse() * lElbowPivot;
 	btVector3 lElbowLoFrame = lLoArmBody->getWorldTransform().inverse() * lElbowPivot;
 	btHingeConstraint *lElbowConstraint = new btHingeConstraint(*lUpArmBody, *lLoArmBody, lElbowUpFrame, lElbowLoFrame, lElbowAxis, lElbowAxis);
-	lElbowConstraint->setLimit(btScalar(-M_PI), btScalar(0.05));
+	lElbowConstraint->setLimit(btScalar(-M_PI_2), btScalar(0.05));
 	m_ownerWorld->addConstraint(lElbowConstraint, true);
 	m_joints.push_back(lElbowConstraint);
 	m_parents.push_back(14);
