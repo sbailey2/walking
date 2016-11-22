@@ -969,8 +969,8 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 	    if (hinge != 0) {
 		buffer[idx++] = hinge->getHingeAngle();
 	    }
-	    btConeTwistConstraint *cone = dynamic_cast<btConeTwistConstraint*>(constraint);
-	    if (cone != 0) {
+	    btGeneric6DofSpring2Constraint *cone = dynamic_cast<btGeneric6DofSpring2Constraint*>(constraint);
+	    if (cone != 0 && dynamic_cast<btFixedConstraint*>(constraint) == 0) {
 	        btRigidBody a = cone->getRigidBodyA();
 		btRigidBody b = cone->getRigidBodyB();
 		btQuaternion worldAxis(btVector3(0.0,1.0,0.0),-M_PI);
@@ -983,6 +983,16 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		btQuaternion orientationB = b.getOrientation();
 		bool flip = false;
 		bool flipX = false;
+		if (i == 5 || i == 8) { // Knees
+		    float angle = cone->getAngle(2);
+		    buffer[idx++] = angle + M_PI_4;
+		    continue;
+		}
+		if (i == 11 || i == 14) { // Elbows
+		    float angle = cone->getAngle(1);
+		    buffer[idx++] = angle;
+		    continue;
+		}
 		if (i == 4) { // RUpLeg
 		    btQuaternion pRot = m_rigs[0]->GetBodies()[4]->getWorldTransform().getRotation();
 		    btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
