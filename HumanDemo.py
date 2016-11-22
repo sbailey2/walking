@@ -117,10 +117,21 @@ try:
         while len(state) < stateSize:
             state += s.recv(1000)
         state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
-        #if i % 20 == 0:
-        #    print('State:')
-        #    print(state)
-        newC = 0.5*np.random.uniform(-1.0,1.0,15)
+        if iteration % 60 == 0:
+            print(state[-9:-6])
+            root = state[:3]
+            footR = state[-6:-3]
+            footL = state[-3:]
+            foot = (footR - footL)
+            foot = foot / np.sqrt(np.sum(np.square(foot)))
+            up = np.asarray([0,1,0])
+            norm = np.cross(foot, up)
+            dist = np.sqrt(np.sum(np.square((root-footL).dot(norm))))
+        newC = 1.0*np.random.uniform(-1.0,1.0,15)
+        newC[8:] *= 0.2
+        #newC[0] = 0.5
+        #newC[3] = 0.5
+        #newC[12] = 0.5
         c = alpha*c + (1-alpha)*newC
         buff = struct.pack('%sf' % len(c), *c)
         iteration += 1

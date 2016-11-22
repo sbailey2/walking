@@ -176,6 +176,8 @@ public:
 	: m_ownerWorld (ownerWorld)
     {
 	btVector3 vUp(0, 1, 0);
+	btScalar damping(10.0);
+	btScalar stiffness(10.0);
 
 	//
 	// Setup geometry
@@ -234,7 +236,7 @@ public:
 	btTransform offset; offset.setIdentity();
 	//offset.setRotation(btQuaternion(btVector3(0.0,1.0,0.0), -M_PI_4));
 	//offset.setRotation(btQuaternion(btVector3(1.0,0.0,0.0), -M_PI_4));
-	offset.setRotation(btQuaternion(btVector3(0.0,0.0,1.0), -0.05));
+	offset.setRotation(btQuaternion(btVector3(0.0,0.0,1.0), 0.05));
 	offset.setOrigin(positionOffset);		
 
 	// root
@@ -349,7 +351,8 @@ public:
 	btVector3 vButtOrigin = vPelvis + btVector3(btScalar(-0.02), btScalar(0.0), btScalar(0.0));
 	buttTransform.setOrigin(vButtOrigin);
 	buttTransform.setRotation(btQuaternion(vAxis, M_PI_2));
-	btRigidBody *buttBody = localCreateRigidBody(btScalar(1.0), offset*buttTransform, buttShape);
+	btRigidBody *buttBody = localCreateRigidBody(btScalar(5.322), offset*buttTransform, buttShape);
+	//btRigidBody *buttBody = localCreateRigidBody(btScalar(0.0), offset*buttTransform, buttShape);
 
 	btTransform loWaistPivot;
 	loWaistPivot.setIdentity();
@@ -357,9 +360,25 @@ public:
 	loWaistPivot = offset * loWaistPivot;
 	btTransform loWaistButtFrame = buttBody->getWorldTransform().inverse() * loWaistPivot;
 	btTransform loWaistLoFrame = loWaistBody->getWorldTransform().inverse() * loWaistPivot;
-	btConeTwistConstraint *loWaistConstraint = new btConeTwistConstraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
+	//btConeTwistConstraint *loWaistConstraint = new btConeTwistConstraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
 	//btTypedConstraint *loWaistConstraint = new btFixedConstraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
+	btVector3 loWaistLL(0.0, -M_PI_4/2, -M_PI_4/2);
+	btVector3 loWaistUL(0.0, M_PI_4/2, M_PI_4/2);
+	btGeneric6DofSpring2Constraint *loWaistConstraint = new btGeneric6DofSpring2Constraint(*buttBody, *loWaistBody, loWaistButtFrame, loWaistLoFrame);
+	loWaistConstraint->setLimit(btScalar(M_PI_4), btScalar(0), btScalar(M_PI_4));
+	loWaistConstraint->setAngularLowerLimit(loWaistLL);
+	loWaistConstraint->setAngularUpperLimit(loWaistUL);
+	loWaistConstraint->enableSpring(3, true);
+	loWaistConstraint->setDamping(3, 10*damping);
+	loWaistConstraint->setStiffness(3, 10*stiffness);
+	loWaistConstraint->enableSpring(4, true);
+	loWaistConstraint->setDamping(4, 10*damping);
+	loWaistConstraint->setStiffness(4, 10*stiffness);
+	loWaistConstraint->enableSpring(5, true);
+	loWaistConstraint->setDamping(5, 10*damping);
+	loWaistConstraint->setStiffness(5, 10*stiffness);
 	loWaistConstraint->setLimit(btScalar(0.0), btScalar(M_PI_4/2), btScalar(M_PI_4/2));
+	loWaistConstraint->setLimit(btScalar(0.0), btScalar(0), btScalar(0));
 	m_ownerWorld->addConstraint(loWaistConstraint, true);
 	m_joints.push_back(loWaistConstraint);
 	//m_parents.push_back(4);
@@ -390,7 +409,7 @@ public:
 	rThighTransform.setIdentity();
 	btVector3 vRThighOrigin = vRThigh + btVector3(btScalar(0.0), btScalar(-0.175), btScalar(0.0));
 	rThighTransform.setOrigin(vRThighOrigin);
-	btRigidBody *rThighBody = localCreateRigidBody(btScalar(1.0), offset*rThighTransform, rThighShape);
+	btRigidBody *rThighBody = localCreateRigidBody(btScalar(5.377), offset*rThighTransform, rThighShape);
 	m_bodies.push_back(rThighBody);
 	btTransform rHipPivot;
 	rHipPivot.setIdentity();
@@ -398,8 +417,23 @@ public:
 	rHipPivot = offset * rHipPivot;
 	btTransform rHipThighFrame = rThighBody->getWorldTransform().inverse() * rHipPivot;
 	btTransform rHipButtFrame = buttBody->getWorldTransform().inverse() * rHipPivot;
-	btConeTwistConstraint *rHipConstraint = new btConeTwistConstraint(*buttBody, *rThighBody, rHipButtFrame, rHipThighFrame);
-	rHipConstraint->setLimit(btScalar(M_PI_4), btScalar(0), btScalar(M_PI_4));
+	//btConeTwistConstraint *rHipConstraint = new btConeTwistConstraint(*buttBody, *rThighBody, rHipButtFrame, rHipThighFrame);
+	btVector3 rHipLL(-M_PI_4, 0.0, -M_PI_4);
+	btVector3 rHipUL(M_PI_4, 0.0, M_PI_4);
+	btGeneric6DofSpring2Constraint *rHipConstraint = new btGeneric6DofSpring2Constraint(*buttBody, *rThighBody, rHipButtFrame, rHipThighFrame);
+	//rHipConstraint->setLimit(btScalar(M_PI_4), btScalar(0), btScalar(M_PI_4));
+	rHipConstraint->setAngularLowerLimit(rHipLL);
+	rHipConstraint->setAngularUpperLimit(rHipUL);
+	rHipConstraint->enableSpring(3, true);
+	rHipConstraint->setDamping(3, damping);
+	rHipConstraint->setStiffness(3, stiffness);
+	rHipConstraint->enableSpring(4, true);
+	rHipConstraint->setDamping(4, damping);
+	rHipConstraint->setStiffness(4, stiffness);
+	rHipConstraint->enableSpring(5, true);
+	rHipConstraint->setDamping(5, damping);
+	rHipConstraint->setStiffness(5, stiffness);
+	
 	m_ownerWorld->addConstraint(rHipConstraint, true);
 	m_joints.push_back(rHipConstraint);
 	m_parents.push_back(4);
@@ -411,14 +445,33 @@ public:
 	rShinTransform.setIdentity();
 	btVector3 vRShinOrigin = vRShin + btVector3(btScalar(0.0), btScalar(-0.15), btScalar(0.0));
 	rShinTransform.setOrigin(vRShinOrigin);
-	btRigidBody *rShinBody = localCreateRigidBody(btScalar(1.0), offset*rShinTransform, rShinShape);
+	btRigidBody *rShinBody = localCreateRigidBody(btScalar(3.1), offset*rShinTransform, rShinShape);
 	m_bodies.push_back(rShinBody);
-	btVector3 rKneePivot = offset * vRShin;
-	btVector3 rKneeThighFrame = rThighBody->getWorldTransform().inverse() * rKneePivot;
-	btVector3 rKneeShinFrame = rShinBody->getWorldTransform().inverse() * rKneePivot;
-	btVector3 rKneeAxis = btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0));
-	btHingeConstraint *rKneeConstraint = new btHingeConstraint(*rThighBody, *rShinBody, rKneeThighFrame, rKneeShinFrame, rKneeAxis, rKneeAxis);
-	rKneeConstraint->setLimit(btScalar(-0.05), btScalar(M_PI_4));
+	btTransform rKneePivot;
+	rKneePivot.setIdentity();
+	rKneePivot.setOrigin(vRShin);
+	rKneePivot = offset * rKneePivot;
+	rShinTransform.setRotation(btQuaternion(btVector3(0,0,1), M_PI_4));
+	rShinTransform.setOrigin(btVector3(0,0,0));
+	btTransform rKneeThighFrame = rThighBody->getWorldTransform().inverse() * rKneePivot;
+	btTransform rKneeShinFrame = rShinTransform * rShinBody->getWorldTransform().inverse() * rKneePivot;
+	rKneeShinFrame.setOrigin(btVector3(0,0.3/2,0));
+	//btHingeConstraint *rKneeConstraint = new btHingeConstraint(*rThighBody, *rShinBody, rKneeThighFrame, rKneeShinFrame, rKneeAxis, rKneeAxis);
+	btVector3 rKneeLL(0.0, 0.0, -M_PI_4);
+	btVector3 rKneeUL(0.0, 0.0, M_PI_4);
+	btGeneric6DofSpring2Constraint *rKneeConstraint = new btGeneric6DofSpring2Constraint(*rThighBody, *rShinBody, rKneeThighFrame, rKneeShinFrame);
+	rKneeConstraint->setAngularLowerLimit(rKneeLL);
+	rKneeConstraint->setAngularUpperLimit(rKneeUL);
+	rKneeConstraint->enableSpring(3, true);
+	rKneeConstraint->setDamping(3, damping);
+	rKneeConstraint->setStiffness(3, stiffness);
+	rKneeConstraint->enableSpring(4, true);
+	rKneeConstraint->setDamping(4, damping);
+	rKneeConstraint->setStiffness(4, stiffness);
+	rKneeConstraint->enableSpring(5, true);
+	rKneeConstraint->setDamping(5, damping);
+	rKneeConstraint->setStiffness(5, stiffness);
+	//rKneeConstraint->setLimit(btScalar(-0.05), btScalar(M_PI_4));
 	m_ownerWorld->addConstraint(rKneeConstraint, true);
 	m_joints.push_back(rKneeConstraint);
 	m_parents.push_back(5);
@@ -447,7 +500,7 @@ public:
 	lThighTransform.setIdentity();
 	btVector3 vLThighOrigin = vLThigh + btVector3(btScalar(0.0), btScalar(-0.175), btScalar(0.0));
 	lThighTransform.setOrigin(vLThighOrigin);
-	btRigidBody *lThighBody = localCreateRigidBody(btScalar(1.0), offset*lThighTransform, lThighShape);
+	btRigidBody *lThighBody = localCreateRigidBody(btScalar(5.377), offset*lThighTransform, lThighShape);
 	m_bodies.push_back(lThighBody);
 	btTransform lHipPivot;
 	lHipPivot.setIdentity();
@@ -455,8 +508,20 @@ public:
 	lHipPivot = offset * lHipPivot;
 	btTransform lHipThighFrame = lThighBody->getWorldTransform().inverse() * lHipPivot;
 	btTransform lHipButtFrame = buttBody->getWorldTransform().inverse() * lHipPivot;
-	btConeTwistConstraint *lHipConstraint = new btConeTwistConstraint(*buttBody, *lThighBody, lHipButtFrame, lHipThighFrame);
-	lHipConstraint->setLimit(btScalar(M_PI_4), btScalar(0.0), btScalar(M_PI_4));
+	btVector3 lHipLL(-M_PI_4, 0.0, -M_PI_4);
+	btVector3 lHipUL(M_PI_4, 0.0, M_PI_4);
+	btGeneric6DofSpring2Constraint *lHipConstraint = new btGeneric6DofSpring2Constraint(*buttBody, *lThighBody, lHipButtFrame, lHipThighFrame);
+	lHipConstraint->setAngularLowerLimit(lHipLL);
+	lHipConstraint->setAngularUpperLimit(lHipUL);
+	lHipConstraint->enableSpring(3, true);
+	lHipConstraint->setDamping(3, damping);
+	lHipConstraint->setStiffness(3, stiffness);
+	lHipConstraint->enableSpring(4, true);
+	lHipConstraint->setDamping(4, damping);
+	lHipConstraint->setStiffness(4, stiffness);
+	lHipConstraint->enableSpring(5, true);
+	lHipConstraint->setDamping(5, damping);
+	lHipConstraint->setStiffness(5, stiffness);
 	m_ownerWorld->addConstraint(lHipConstraint, true);
 	m_joints.push_back(lHipConstraint);
 	m_parents.push_back(4);
@@ -468,14 +533,32 @@ public:
 	lShinTransform.setIdentity();
 	btVector3 vLShinOrigin = vLShin + btVector3(btScalar(0.0), btScalar(-0.15), btScalar(0.0));
 	lShinTransform.setOrigin(vLShinOrigin);
-	btRigidBody *lShinBody = localCreateRigidBody(btScalar(1.0), offset*lShinTransform, lShinShape);
+	btRigidBody *lShinBody = localCreateRigidBody(btScalar(3.1), offset*lShinTransform, lShinShape);
 	m_bodies.push_back(lShinBody);
-	btVector3 lKneePivot = offset * vLShin;
-	btVector3 lKneeThighFrame = lThighBody->getWorldTransform().inverse() * lKneePivot;
-	btVector3 lKneeShinFrame = lShinBody->getWorldTransform().inverse() * lKneePivot;
-	btVector3 lKneeAxis = btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0));
-	btHingeConstraint *lKneeConstraint = new btHingeConstraint(*lThighBody, *lShinBody, lKneeThighFrame, lKneeShinFrame, lKneeAxis, lKneeAxis);
-	lKneeConstraint->setLimit(btScalar(-0.05), btScalar(M_PI_4));
+	btTransform lKneePivot;
+	lKneePivot.setIdentity();
+	lKneePivot.setOrigin(vLShin);
+	lKneePivot = offset * lKneePivot;
+	lShinTransform.setRotation(btQuaternion(btVector3(0,0,1), M_PI_4));
+	lShinTransform.setOrigin(btVector3(0,0,0));
+	btTransform lKneeThighFrame = lThighBody->getWorldTransform().inverse() * lKneePivot;
+	btTransform lKneeShinFrame = lShinTransform * lShinBody->getWorldTransform().inverse() * lKneePivot;
+	lKneeShinFrame.setOrigin(btVector3(0,0.3/2,0));
+	//btHingeConstraint *lKneeConstraint = new btHingeConstraint(*lThighBody, *lShinBody, lKneeThighFrame, lKneeShinFrame, lKneeAxis, lKneeAxis);
+	btVector3 lKneeLL(0.0, 0.0, -M_PI_4);
+	btVector3 lKneeUL(0.0, 0.0, M_PI_4);
+	btGeneric6DofSpring2Constraint *lKneeConstraint = new btGeneric6DofSpring2Constraint(*lThighBody, *lShinBody, lKneeThighFrame, lKneeShinFrame);
+	lKneeConstraint->setAngularLowerLimit(lKneeLL);
+	lKneeConstraint->setAngularUpperLimit(lKneeUL);
+	lKneeConstraint->enableSpring(3, true);
+	lKneeConstraint->setDamping(3, damping);
+	lKneeConstraint->setStiffness(3, stiffness);
+	lKneeConstraint->enableSpring(4, true);
+	lKneeConstraint->setDamping(4, damping);
+	lKneeConstraint->setStiffness(4, stiffness);
+	lKneeConstraint->enableSpring(5, true);
+	lKneeConstraint->setDamping(5, damping);
+	lKneeConstraint->setStiffness(5, stiffness);
 	m_ownerWorld->addConstraint(lKneeConstraint, true);
 	m_joints.push_back(lKneeConstraint);
 	m_parents.push_back(8);
@@ -505,16 +588,29 @@ public:
 	btVector3 vRUpArmOrigin = vRUpArm + btVector3(btScalar(0.0), btScalar(0.0), btScalar(-armLength / 2));
 	rUpArmTransform.setOrigin(vRUpArmOrigin);
 	rUpArmTransform.setRotation(btQuaternion(vAxis, M_PI_2));
-	btRigidBody *rUpArmBody = localCreateRigidBody(btScalar(1.0), offset*rUpArmTransform, rUpArmShape);
+	btRigidBody *rUpArmBody = localCreateRigidBody(btScalar(1.594), offset*rUpArmTransform, rUpArmShape);
 	m_bodies.push_back(rUpArmBody);
 	btTransform rShldrPivot;
 	rShldrPivot.setIdentity();
 	rShldrPivot.setOrigin(vRUpArm);
 	rShldrPivot = offset * rShldrPivot;
-	btTransform rShldrArmFrame = rUpArmBody->getWorldTransform().inverse() * rShldrPivot;
+	btTransform rShldrArmFrame = rUpArmTransform * rUpArmBody->getWorldTransform().inverse() * rShldrPivot;
+	rShldrArmFrame.setOrigin(btVector3(0,armLength/2,0));
 	btTransform rShldrWaistFrame = upWaistBody->getWorldTransform().inverse() * rShldrPivot;
-	btConeTwistConstraint *rShldrConstraint = new btConeTwistConstraint(*upWaistBody, *rUpArmBody, rShldrWaistFrame, rShldrArmFrame);
-	rShldrConstraint->setLimit(btScalar(M_PI), btScalar(0.0), btScalar(M_PI));
+	btGeneric6DofSpring2Constraint *rShldrConstraint = new btGeneric6DofSpring2Constraint(*upWaistBody, *rUpArmBody, rShldrWaistFrame, rShldrArmFrame);
+	btVector3 rShldrLL(-M_PI, 0.0, -M_PI);
+	btVector3 rShldrUL(M_PI, 0.0, M_PI);
+	rShldrConstraint->setAngularLowerLimit(rShldrLL);
+	rShldrConstraint->setAngularUpperLimit(rShldrUL);
+	rShldrConstraint->enableSpring(3, true);
+	rShldrConstraint->setDamping(3, damping);
+	rShldrConstraint->setStiffness(3, stiffness);
+	rShldrConstraint->enableSpring(4, true);
+	rShldrConstraint->setDamping(4, damping);
+	rShldrConstraint->setStiffness(4, stiffness);
+	rShldrConstraint->enableSpring(5, true);
+	rShldrConstraint->setDamping(5, damping);
+	rShldrConstraint->setStiffness(5, stiffness);
 	m_ownerWorld->addConstraint(rShldrConstraint, true);
 	m_joints.push_back(rShldrConstraint);
 	m_parents.push_back(2);
@@ -527,14 +623,30 @@ public:
 	btVector3 vRLoArmOrigin = vRLoArm + btVector3(btScalar(0.0), btScalar(0.0), btScalar(-armLength / 2));
 	rLoArmTransform.setOrigin(vRLoArmOrigin);
 	rLoArmTransform.setRotation(btQuaternion(vAxis, M_PI_2));
-	btRigidBody *rLoArmBody = localCreateRigidBody(btScalar(1.0), offset*rLoArmTransform, rLoArmShape);
+	btRigidBody *rLoArmBody = localCreateRigidBody(btScalar(0.877), offset*rLoArmTransform, rLoArmShape);
 	m_bodies.push_back(rLoArmBody);
-	btVector3 rElbowAxis = btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0));
-	btVector3 rElbowPivot = offset * vRLoArm;
-	btVector3 rElbowUpFrame = rUpArmBody->getWorldTransform().inverse() * rElbowPivot;
-	btVector3 rElbowLoFrame = rLoArmBody->getWorldTransform().inverse() * rElbowPivot;
-	btHingeConstraint *rElbowConstraint = new btHingeConstraint(*rUpArmBody, *rLoArmBody, rElbowUpFrame, rElbowLoFrame, rElbowAxis, rElbowAxis);
-	rElbowConstraint->setLimit(btScalar(-M_PI_2), btScalar(0.05));
+	btTransform rElbowPivot;
+	rElbowPivot.setIdentity();
+	rElbowPivot.setOrigin(vRLoArm);
+	rElbowPivot = offset * rElbowPivot;
+	btTransform rElbowUpFrame = rUpArmBody->getWorldTransform().inverse() * rElbowPivot;
+	btTransform rElbowLoFrame = rLoArmBody->getWorldTransform().inverse() * rElbowPivot;
+	//btHingeConstraint *rElbowConstraint = new btHingeConstraint(*rUpArmBody, *rLoArmBody, rElbowUpFrame, rElbowLoFrame, rElbowAxis, rElbowAxis);
+	btGeneric6DofSpring2Constraint *rElbowConstraint = new btGeneric6DofSpring2Constraint(*rUpArmBody, *rLoArmBody, rElbowUpFrame, rElbowLoFrame);
+	btVector3 rElbowLL(0.0, -0.05, 0.0);
+	btVector3 rElbowUL(0.0, M_PI_2, 0.0);
+	rElbowConstraint->setAngularLowerLimit(rElbowLL);
+	rElbowConstraint->setAngularUpperLimit(rElbowUL);
+	rElbowConstraint->enableSpring(3, true);
+	rElbowConstraint->setDamping(3, damping);
+	rElbowConstraint->setStiffness(3, stiffness);
+	rElbowConstraint->enableSpring(4, true);
+	rElbowConstraint->setDamping(4, damping);
+	rElbowConstraint->setStiffness(4, stiffness);
+	rElbowConstraint->enableSpring(5, true);
+	rElbowConstraint->setDamping(5, damping);
+	rElbowConstraint->setStiffness(5, stiffness);
+	//rElbowConstraint->setLimit(btScalar(-M_PI_2), btScalar(0.05));
 	m_ownerWorld->addConstraint(rElbowConstraint, true);
 	m_joints.push_back(rElbowConstraint);
 	m_parents.push_back(11);
@@ -545,7 +657,7 @@ public:
 	rHandTransform.setIdentity();
 	btVector3 vRHandOrigin = vRHand + btVector3(btScalar(0.0), btScalar(0.0), btScalar(0.0));
 	rHandTransform.setOrigin(vRHandOrigin);
-	btRigidBody *rHandBody = localCreateRigidBody(btScalar(1.0), offset*rHandTransform, rHandShape);
+	btRigidBody *rHandBody = localCreateRigidBody(btScalar(0.25), offset*rHandTransform, rHandShape);
 	m_bodies.push_back(rHandBody);
 	btTransform rWristPivot;
 	rWristPivot.setIdentity();
@@ -564,16 +676,35 @@ public:
 	btVector3 vLUpArmOrigin = vLUpArm + btVector3(btScalar(0.0), btScalar(0.0), btScalar(armLength / 2));
 	lUpArmTransform.setOrigin(vLUpArmOrigin);
 	lUpArmTransform.setRotation(btQuaternion(vAxis, M_PI_2));
-	btRigidBody *lUpArmBody = localCreateRigidBody(btScalar(1.0), offset*lUpArmTransform, lUpArmShape);
+	btRigidBody *lUpArmBody = localCreateRigidBody(btScalar(1.594), offset*lUpArmTransform, lUpArmShape);
 	m_bodies.push_back(lUpArmBody);
 	btTransform lShldrPivot;
 	lShldrPivot.setIdentity();
 	lShldrPivot.setOrigin(vLUpArm);
 	lShldrPivot = offset * lShldrPivot;
-	btTransform lShldrArmFrame = lUpArmBody->getWorldTransform().inverse() * lShldrPivot;
+	//lUpArmTransform.setOrigin(btVector3(0,0,0));
+	btTransform lShldrArmFrame = lUpArmTransform.inverse() * lUpArmBody->getWorldTransform().inverse() * lShldrPivot;
+	lShldrArmFrame.setOrigin(btVector3(0,-armLength/2,0));
+	//btTransform lShldrArmFrame = lShldrPivot;
 	btTransform lShldrWaistFrame = upWaistBody->getWorldTransform().inverse() * lShldrPivot;
-	btConeTwistConstraint *lShldrConstraint = new btConeTwistConstraint(*upWaistBody, *lUpArmBody, lShldrWaistFrame, lShldrArmFrame);
-	lShldrConstraint->setLimit(btScalar(M_PI), btScalar(0.0), btScalar(M_PI));
+	//btConeTwistConstraint *lShldrConstraint = new btConeTwistConstraint(*upWaistBody, *lUpArmBody, lShldrWaistFrame, lShldrArmFrame);
+	//lShldrConstraint->setLimit(btScalar(M_PI), btScalar(0.0), btScalar(M_PI));
+
+	btGeneric6DofSpring2Constraint *lShldrConstraint = new btGeneric6DofSpring2Constraint(*upWaistBody, *lUpArmBody, lShldrWaistFrame, lShldrArmFrame);
+	btVector3 lShldrLL(-M_PI, 0.0, -M_PI);
+	btVector3 lShldrUL(M_PI, 0.0, M_PI);
+	lShldrConstraint->setAngularLowerLimit(lShldrLL);
+	lShldrConstraint->setAngularUpperLimit(lShldrUL);
+	lShldrConstraint->enableSpring(3, true);
+	lShldrConstraint->setDamping(3, damping);
+	lShldrConstraint->setStiffness(3, stiffness);
+	lShldrConstraint->enableSpring(4, true);
+	lShldrConstraint->setDamping(4, damping);
+	lShldrConstraint->setStiffness(4, stiffness);
+	lShldrConstraint->enableSpring(5, true);
+	lShldrConstraint->setDamping(5, damping);
+	lShldrConstraint->setStiffness(5, stiffness);
+
 	m_ownerWorld->addConstraint(lShldrConstraint, true);
 	m_joints.push_back(lShldrConstraint);
 	m_parents.push_back(2);
@@ -586,14 +717,30 @@ public:
 	btVector3 vLLoArmOrigin = vLLoArm + btVector3(btScalar(0.0), btScalar(0.0), btScalar(armLength / 2));
 	lLoArmTransform.setOrigin(vLLoArmOrigin);
 	lLoArmTransform.setRotation(btQuaternion(vAxis, M_PI_2));
-	btRigidBody *lLoArmBody = localCreateRigidBody(btScalar(1.0), offset*lLoArmTransform, lLoArmShape);
+	btRigidBody *lLoArmBody = localCreateRigidBody(btScalar(0.877), offset*lLoArmTransform, lLoArmShape);
 	m_bodies.push_back(lLoArmBody);
-	btVector3 lElbowAxis = btVector3(btScalar(0.0), btScalar(0.0), btScalar(-1.0));
-	btVector3 lElbowPivot = offset * vLLoArm;
-	btVector3 lElbowUpFrame = lUpArmBody->getWorldTransform().inverse() * lElbowPivot;
-	btVector3 lElbowLoFrame = lLoArmBody->getWorldTransform().inverse() * lElbowPivot;
-	btHingeConstraint *lElbowConstraint = new btHingeConstraint(*lUpArmBody, *lLoArmBody, lElbowUpFrame, lElbowLoFrame, lElbowAxis, lElbowAxis);
-	lElbowConstraint->setLimit(btScalar(-M_PI_2), btScalar(0.05));
+	btTransform lElbowPivot;
+	lElbowPivot.setIdentity();
+	lElbowPivot.setOrigin(vLLoArm);
+	lElbowPivot = offset * lElbowPivot;
+	btTransform lElbowUpFrame = lUpArmBody->getWorldTransform().inverse() * lElbowPivot;
+	btTransform lElbowLoFrame = lLoArmBody->getWorldTransform().inverse() * lElbowPivot;
+	//btHingeConstraint *lElbowConstraint = new btHingeConstraint(*lUpArmBody, *lLoArmBody, lElbowUpFrame, lElbowLoFrame, lElbowAxis, lElbowAxis);
+	btGeneric6DofSpring2Constraint *lElbowConstraint = new btGeneric6DofSpring2Constraint(*lUpArmBody, *lLoArmBody, lElbowUpFrame, lElbowLoFrame);
+	btVector3 lElbowLL(0.0, -M_PI_2, 0.0);
+	btVector3 lElbowUL(0.0, 0.05, 0.0);
+	lElbowConstraint->setAngularLowerLimit(lElbowLL);
+	lElbowConstraint->setAngularUpperLimit(lElbowUL);
+	lElbowConstraint->enableSpring(3, true);
+	lElbowConstraint->setDamping(3, damping);
+	lElbowConstraint->setStiffness(3, stiffness);
+	lElbowConstraint->enableSpring(4, true);
+	lElbowConstraint->setDamping(4, damping);
+	lElbowConstraint->setStiffness(4, stiffness);
+	lElbowConstraint->enableSpring(5, true);
+	lElbowConstraint->setDamping(5, damping);
+	lElbowConstraint->setStiffness(5, stiffness);
+	//lElbowConstraint->setLimit(btScalar(-M_PI_2), btScalar(0.05));
 	m_ownerWorld->addConstraint(lElbowConstraint, true);
 	m_joints.push_back(lElbowConstraint);
 	m_parents.push_back(14);
@@ -604,7 +751,7 @@ public:
 	lHandTransform.setIdentity();
 	btVector3 vLHandOrigin = vLHand + btVector3(btScalar(0.0), btScalar(0.0), btScalar(0.0));
 	lHandTransform.setOrigin(vLHandOrigin);
-	btRigidBody *lHandBody = localCreateRigidBody(btScalar(1.0), offset*lHandTransform, lHandShape);
+	btRigidBody *lHandBody = localCreateRigidBody(btScalar(0.25), offset*lHandTransform, lHandShape);
 	m_bodies.push_back(lHandBody);
 	btTransform lWristPivot;
 	lWristPivot.setIdentity();
@@ -741,7 +888,7 @@ void HumanDemo::initPhysics()
     }
 
     // Spawn one ragdoll
-    btVector3 startOffset(0,-0.1,-0.2);
+    btVector3 startOffset(0,-0.1,0.0);
     spawnHumanRig(startOffset, false);
 
     if (m_guiHelper != 0) { 
@@ -941,6 +1088,26 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		}
 	    }
 	}
+
+	// Print head information
+	trans = m_rigs[0]->GetBodies()[1]->getWorldTransform();
+	t = trans.getOrigin();
+	buffer[idx++] = t[0];
+	buffer[idx++] = t[1];
+	buffer[idx++] = t[2];
+
+	// Print foot information
+	trans = m_rigs[0]->GetBodies()[7]->getWorldTransform();
+	t = trans.getOrigin();
+	buffer[idx++] = t[0];
+	buffer[idx++] = t[1];
+	buffer[idx++] = t[2];
+
+	trans = m_rigs[0]->GetBodies()[10]->getWorldTransform();
+	t = trans.getOrigin();
+	buffer[idx++] = t[0];
+	buffer[idx++] = t[1];
+	buffer[idx++] = t[2];
     }
     int size = (idx - 1) * sizeof(float);
     ((int*)newBuff)[0] = size;
