@@ -106,7 +106,7 @@ iteration = 0
 states = []
 amc = None
 c = np.zeros(15)
-alpha = 0.9
+alpha = 0.5
 try:
     while True:
 
@@ -127,7 +127,7 @@ try:
             up = np.asarray([0,1,0])
             norm = np.cross(foot, up)
             dist = np.sqrt(np.sum(np.square((root-footL).dot(norm))))
-        newC = 1.0*np.random.uniform(-1.0,1.0,15)
+        newC = 0.0*np.random.uniform(-1.0,1.0,15)
         newC[8:] *= 0.2
         #newC[0] = 0.5
         #newC[3] = 0.5

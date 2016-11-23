@@ -158,7 +158,7 @@ class HumanRig
 
 	btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
-	rbInfo.m_friction = btScalar(1.0);
+	rbInfo.m_friction = btScalar(1e6);
 	rbInfo.m_linearDamping = btScalar(0.9);
 	rbInfo.m_angularDamping = btScalar(0.9);
 	
@@ -193,10 +193,12 @@ public:
 	btCapsuleShape *buttShape = new btCapsuleShape(btScalar(0.09), btScalar(0.14));
 	btCapsuleShape *rThighShape = new btCapsuleShape(btScalar(0.06), btScalar(0.34));
 	btCapsuleShape *rShinShape = new btCapsuleShape(btScalar(0.049), btScalar(0.3));
-	btSphereShape *rFootShape = new btSphereShape(btScalar(0.075));
+	//btSphereShape *rFootShape = new btSphereShape(btScalar(0.075));
+	btBoxShape *rFootShape = new btBoxShape(btVector3(0.075,0.075,0.075));
 	btCapsuleShape *lThighShape = new btCapsuleShape(btScalar(0.06), btScalar(0.34));
 	btCapsuleShape *lShinShape = new btCapsuleShape(btScalar(0.049), btScalar(0.3));
-	btSphereShape *lFootShape = new btSphereShape(btScalar(0.075));
+	//btSphereShape *lFootShape = new btSphereShape(btScalar(0.075));
+	btBoxShape *lFootShape = new btBoxShape(btVector3(0.075,0.075,0.075));
 	btCapsuleShape *rUpArmShape = new btCapsuleShape(btScalar(0.04), btScalar(armLength));
 	btCapsuleShape *rLoArmShape = new btCapsuleShape(btScalar(0.04), btScalar(armLength));
 	btSphereShape *rHandShape = new btSphereShape(btScalar(0.04));
@@ -418,7 +420,7 @@ public:
 	btTransform rHipThighFrame = rThighBody->getWorldTransform().inverse() * rHipPivot;
 	btTransform rHipButtFrame = buttBody->getWorldTransform().inverse() * rHipPivot;
 	//btConeTwistConstraint *rHipConstraint = new btConeTwistConstraint(*buttBody, *rThighBody, rHipButtFrame, rHipThighFrame);
-	btVector3 rHipLL(-M_PI_4, 0.0, -M_PI_4);
+	btVector3 rHipLL(-M_PI_4, 0.0, -M_PI_2);
 	btVector3 rHipUL(M_PI_4, 0.0, M_PI_4);
 	btGeneric6DofSpring2Constraint *rHipConstraint = new btGeneric6DofSpring2Constraint(*buttBody, *rThighBody, rHipButtFrame, rHipThighFrame);
 	//rHipConstraint->setLimit(btScalar(M_PI_4), btScalar(0), btScalar(M_PI_4));
@@ -508,7 +510,7 @@ public:
 	lHipPivot = offset * lHipPivot;
 	btTransform lHipThighFrame = lThighBody->getWorldTransform().inverse() * lHipPivot;
 	btTransform lHipButtFrame = buttBody->getWorldTransform().inverse() * lHipPivot;
-	btVector3 lHipLL(-M_PI_4, 0.0, -M_PI_4);
+	btVector3 lHipLL(-M_PI_4, 0.0, -M_PI_2);
 	btVector3 lHipUL(M_PI_4, 0.0, M_PI_4);
 	btGeneric6DofSpring2Constraint *lHipConstraint = new btGeneric6DofSpring2Constraint(*buttBody, *lThighBody, lHipButtFrame, lHipThighFrame);
 	lHipConstraint->setAngularLowerLimit(lHipLL);
@@ -825,6 +827,9 @@ public:
 	    b->applyTorqueImpulse(t);
 	    p->applyTorqueImpulse(-t);
 	}
+	btRigidBody *foot = m_bodies[6];
+	btVector3 imp(1.0,0,0);
+	foot->applyCentralImpulse(imp);
     }
 
 };
@@ -888,7 +893,7 @@ void HumanDemo::initPhysics()
     }
 
     // Spawn one ragdoll
-    btVector3 startOffset(0,-0.1,0.0);
+    btVector3 startOffset(0,-0.3,0.0);
     spawnHumanRig(startOffset, false);
 
     if (m_guiHelper != 0) { 
@@ -1126,9 +1131,9 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 
 
     // Read the control from the socket
-    std::vector<double> c(15);
+    std::vector<double> c(14);
     char *buffPtr = newBuff;
-    while (buffPtr - newBuff < 15 * sizeof(float)) {
+    while (buffPtr - newBuff < 14 * sizeof(float)) {
 	n = read(clientSocket, buffPtr, 1000*sizeof(float));
 	buffPtr += n;
     }
@@ -1141,7 +1146,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
     }
 
     // If not, then apply the controls
-    for (int i=0; i<15; ++i) {
+    for (int i=0; i<14; ++i) {
 	c[i] = buffer[i];
     }
 
