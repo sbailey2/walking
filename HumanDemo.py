@@ -105,7 +105,7 @@ iteration = 0
 #while True:
 states = []
 amc = None
-c = np.zeros(15)
+c = np.zeros(14)
 alpha = 0.5
 try:
     while True:
@@ -117,7 +117,9 @@ try:
         while len(state) < stateSize:
             state += s.recv(1000)
         state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+        assert(state.shape[0] == 34)
         if iteration % 60 == 0:
+            print(state.shape)
             print(state[-9:-6])
             root = state[:3]
             footR = state[-6:-3]
@@ -127,7 +129,7 @@ try:
             up = np.asarray([0,1,0])
             norm = np.cross(foot, up)
             dist = np.sqrt(np.sum(np.square((root-footL).dot(norm))))
-        newC = 0.0*np.random.uniform(-1.0,1.0,15)
+        newC = np.random.uniform(-1.0,1.0,14)
         newC[8:] *= 0.2
         #newC[0] = 0.5
         #newC[3] = 0.5
@@ -143,14 +145,18 @@ try:
         #if iteration % 10 == 0:
         #    print('YPR: '+str(r[0])+' '+str(r[1])+' '+str(r[2]))
 
-        if iteration % 200000 == 0:
+        if iteration % 30 == 0:
             print('Iteration '+str(iteration))
             print(state.shape)
             print(state)
-            s.send(b'RESET')
-            zeros = np.zeros(20).astype(int)
+            zeros = np.zeros(14).astype(int)
             buff = struct.pack('%si' % len(zeros), *zeros)
-            s.send(buff)
+            print(len(b'RESET'))
+            #print(dir(buff))
+            #buff[:5] = b'RESET'
+            s.send(b'RESET')
+            print(len(buff[:51]))
+            s.send(buff[:51])
         else:
             s.send(buff)
 except KeyboardInterrupt:

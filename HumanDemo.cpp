@@ -159,7 +159,7 @@ class HumanRig
 	btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 	btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
 	rbInfo.m_friction = btScalar(1e6);
-	rbInfo.m_linearDamping = btScalar(0.9);
+	rbInfo.m_linearDamping = btScalar(0.25);
 	rbInfo.m_angularDamping = btScalar(0.9);
 	
 	btRigidBody* body = new btRigidBody(rbInfo);
@@ -179,6 +179,39 @@ public:
 	btScalar damping(10.0);
 	btScalar stiffness(10.0);
 
+	// Set up the world and stuffs
+	m_ownerWorld->getSolverInfo().m_solverMode = SOLVER_USE_WARMSTARTING | SOLVER_SIMD | SOLVER_USE_2_FRICTION_DIRECTIONS | SOLVER_ENABLE_FRICTION_DIRECTION_CACHING;
+	m_ownerWorld->getSolverInfo().m_warmstartingFactor = 1.0;
+	m_ownerWorld->getSolverInfo().m_minimumSolverBatchSize = 1;
+
+	//Quality/stability
+	m_ownerWorld->getSolverInfo().m_tau = 1.0;  //mass factor
+	m_ownerWorld->getSolverInfo().m_erp = 0.5;  //constraint error reduction in one step
+	m_ownerWorld->getSolverInfo().m_erp2 = 1.0; //constraint error reduction in one step for split impulse
+	m_ownerWorld->getSolverInfo().m_numIterations = 1000; //number of constraint iterations
+	m_ownerWorld->getSolverInfo().m_sor = 1.0; //not used
+	m_ownerWorld->getSolverInfo().m_maxErrorReduction = 0; //not used
+   
+	//Collision
+	m_ownerWorld->getSolverInfo().m_splitImpulse = true; //avoid adding energy to the system
+	m_ownerWorld->getSolverInfo().m_splitImpulsePenetrationThreshold = -0.000001; //low value needed for accurate friction
+	//m_ownerWorld->getSolverInfo().m_splitImpulsePenetrationThreshold = -0.1; //low value needed for accurate friction
+	m_ownerWorld->getSolverInfo().m_splitImpulseTurnErp = 1.0; //error reduction for rigid body angular velocity
+	m_ownerWorld->getDispatchInfo().m_useContinuous = false;
+	m_ownerWorld->getDispatchInfo().m_allowedCcdPenetration = -0.001;
+	//m_ownerWorld->setApplySpeculativeContactRestitution(true);
+	m_ownerWorld->getSolverInfo().m_restingContactRestitutionThreshold = 1e30; //not used
+   
+	//Special forces
+	m_ownerWorld->getSolverInfo().m_maxGyroscopicForce = 1e30; //gyroscopic effect
+   
+	//Unrealistic components
+	//m_ownerWorld->getSolverInfo().m_globalCfm = 0.0; //global constraint force mixing factor
+	//m_ownerWorld->getSolverInfo().m_damping = 0.25; //global damping
+	m_ownerWorld->getSolverInfo().m_friction = 1.0; //global friction
+	m_ownerWorld->getSolverInfo().m_singleAxisRollingFrictionThreshold = 1e30; //single axis rolling velocity threshold
+	m_ownerWorld->getSolverInfo().m_linearSlop = 0.0; //position bias
+
 	//
 	// Setup geometry
 	//
@@ -193,12 +226,12 @@ public:
 	btCapsuleShape *buttShape = new btCapsuleShape(btScalar(0.09), btScalar(0.14));
 	btCapsuleShape *rThighShape = new btCapsuleShape(btScalar(0.06), btScalar(0.34));
 	btCapsuleShape *rShinShape = new btCapsuleShape(btScalar(0.049), btScalar(0.3));
-	//btSphereShape *rFootShape = new btSphereShape(btScalar(0.075));
-	btBoxShape *rFootShape = new btBoxShape(btVector3(0.075,0.075,0.075));
+	btSphereShape *rFootShape = new btSphereShape(btScalar(0.075));
+	//btBoxShape *rFootShape = new btBoxShape(btVector3(0.075,0.075,0.075));
 	btCapsuleShape *lThighShape = new btCapsuleShape(btScalar(0.06), btScalar(0.34));
 	btCapsuleShape *lShinShape = new btCapsuleShape(btScalar(0.049), btScalar(0.3));
-	//btSphereShape *lFootShape = new btSphereShape(btScalar(0.075));
-	btBoxShape *lFootShape = new btBoxShape(btVector3(0.075,0.075,0.075));
+	btSphereShape *lFootShape = new btSphereShape(btScalar(0.075));
+	//btBoxShape *lFootShape = new btBoxShape(btVector3(0.075,0.075,0.075));
 	btCapsuleShape *rUpArmShape = new btCapsuleShape(btScalar(0.04), btScalar(armLength));
 	btCapsuleShape *rLoArmShape = new btCapsuleShape(btScalar(0.04), btScalar(armLength));
 	btSphereShape *rHandShape = new btSphereShape(btScalar(0.04));
@@ -238,7 +271,7 @@ public:
 	btTransform offset; offset.setIdentity();
 	//offset.setRotation(btQuaternion(btVector3(0.0,1.0,0.0), -M_PI_4));
 	//offset.setRotation(btQuaternion(btVector3(1.0,0.0,0.0), -M_PI_4));
-	offset.setRotation(btQuaternion(btVector3(0.0,0.0,1.0), 0.05));
+	offset.setRotation(btQuaternion(btVector3(0.0,0.0,1.0), -0.15));
 	offset.setOrigin(positionOffset);		
 
 	// root
@@ -827,9 +860,9 @@ public:
 	    b->applyTorqueImpulse(t);
 	    p->applyTorqueImpulse(-t);
 	}
-	btRigidBody *foot = m_bodies[6];
-	btVector3 imp(1.0,0,0);
-	foot->applyCentralImpulse(imp);
+	//btRigidBody *foot = m_bodies[6];
+	//btVector3 imp(10.0,0,0);
+	//foot->applyCentralImpulse(imp);
     }
 
 };
@@ -893,7 +926,7 @@ void HumanDemo::initPhysics()
     }
 
     // Spawn one ragdoll
-    btVector3 startOffset(0,-0.3,0.0);
+    btVector3 startOffset(0,-0.1,0.0);
     spawnHumanRig(startOffset, false);
 
     if (m_guiHelper != 0) { 
@@ -1131,6 +1164,8 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 
 
     // Read the control from the socket
+    //int controlSize;
+    //read(clientSocket, (char*)&controlSize, sizeof(int));
     std::vector<double> c(14);
     char *buffPtr = newBuff;
     while (buffPtr - newBuff < 14 * sizeof(float)) {
