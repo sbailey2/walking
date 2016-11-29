@@ -63,7 +63,7 @@ def convertToAMC(states):
         #data['root'] = [s[0],s[1],s[2],-c*s[3],-c*s[5],-c*s[4]]
         #data['lowerback'] = [c*s[6],-c*s[7],c*s[8]-90]
         data['lhumerus'] = [c*s[19],c*s[18],c*s[17]]
-        data['lradius'] = [-c*s[20]]
+        data['lradius'] = [c*s[20]]
         data['rhumerus'] = [c*s[23],c*s[22],c*s[21]]
         data['rradius'] = [-c*s[24]]
         data['rfemur'] = [c*s[13],c*s[14],c*s[15]]
@@ -129,7 +129,7 @@ try:
             up = np.asarray([0,1,0])
             norm = np.cross(foot, up)
             dist = np.sqrt(np.sum(np.square((root-footL).dot(norm))))
-        newC = np.random.uniform(-1.0,1.0,14)
+        newC = 0.0 * np.random.uniform(-1.0,1.0,14)
         newC[8:] *= 0.2
         #newC[0] = 0.5
         #newC[3] = 0.5
@@ -138,14 +138,14 @@ try:
         buff = struct.pack('%sf' % len(c), *c)
         iteration += 1
 
-        #if amc is None:
-        #    states.append(state)
+        if amc is None:
+            states.append(state)
         #q = np.asarray([state[9],state[10],state[11],np.sqrt(1-state[9]**2-state[10]**2-state[11]**2)])
         #r = quat2equatorial(q)
         #if iteration % 10 == 0:
         #    print('YPR: '+str(r[0])+' '+str(r[1])+' '+str(r[2]))
 
-        if iteration % 30 == 0:
+        if iteration % 20000 == 0:
             print('Iteration '+str(iteration))
             print(state.shape)
             print(state)
@@ -163,7 +163,7 @@ except KeyboardInterrupt:
     pass
 s.close()
         
-"""amc = convertToAMC(states)
+amc = convertToAMC(states)
 fileName='simTest.amc'
 with open(fileName,'w') as file:
-    file.write(amc)"""
+    file.write(amc)

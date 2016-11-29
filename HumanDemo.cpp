@@ -272,6 +272,7 @@ public:
 	//offset.setRotation(btQuaternion(btVector3(0.0,1.0,0.0), -M_PI_4));
 	//offset.setRotation(btQuaternion(btVector3(1.0,0.0,0.0), -M_PI_4));
 	offset.setRotation(btQuaternion(btVector3(0.0,0.0,1.0), -0.15));
+	//offset.setRotation(btQuaternion(btVector3(0.0,0.0,1.0), -M_PI_2));
 	offset.setOrigin(positionOffset);		
 
 	// root
@@ -303,10 +304,10 @@ public:
 	btVector3 vLThigh = vPelvis + btVector3(btScalar(0.0), btScalar(-0.04), btScalar(0.1));
 	btVector3 vLShin = vLThigh + btVector3(btScalar(0.0), btScalar(-0.403), btScalar(-0.01));
 	btVector3 vLFoot = vLShin + btVector3(btScalar(0.0), btScalar(-0.45), btScalar(0.0));
-	btVector3 vRUpArm = vRoot + btVector3(btScalar(0.0), btScalar(0.06), btScalar(-0.17));
+	btVector3 vRUpArm = vRoot + btVector3(btScalar(0.0), btScalar(0.06), btScalar(-0.23));
 	btVector3 vRLoArm = vRUpArm + btVector3(btScalar(0.0), btScalar(0.0), btScalar(-0.311769));
 	btVector3 vRHand = vRLoArm + btVector3(btScalar(0.0), btScalar(0.0), btScalar(-0.311769));
-	btVector3 vLUpArm = vRoot + btVector3(btScalar(0.0), btScalar(0.06), btScalar(0.17));
+	btVector3 vLUpArm = vRoot + btVector3(btScalar(0.0), btScalar(0.06), btScalar(0.23));
 	btVector3 vLLoArm = vLUpArm + btVector3(btScalar(0.0), btScalar(0.0), btScalar(0.311769));
 	btVector3 vLHand = vLLoArm + btVector3(btScalar(0.0), btScalar(0.0), btScalar(0.311769));
 
@@ -633,8 +634,8 @@ public:
 	rShldrArmFrame.setOrigin(btVector3(0,armLength/2,0));
 	btTransform rShldrWaistFrame = upWaistBody->getWorldTransform().inverse() * rShldrPivot;
 	btGeneric6DofSpring2Constraint *rShldrConstraint = new btGeneric6DofSpring2Constraint(*upWaistBody, *rUpArmBody, rShldrWaistFrame, rShldrArmFrame);
-	btVector3 rShldrLL(-M_PI, 0.0, -M_PI);
-	btVector3 rShldrUL(M_PI, 0.0, M_PI);
+	btVector3 rShldrLL(-M_PI, 0, -M_PI);
+	btVector3 rShldrUL(M_PI, 0, M_PI);
 	rShldrConstraint->setAngularLowerLimit(rShldrLL);
 	rShldrConstraint->setAngularUpperLimit(rShldrUL);
 	rShldrConstraint->enableSpring(3, true);
@@ -726,8 +727,8 @@ public:
 	//lShldrConstraint->setLimit(btScalar(M_PI), btScalar(0.0), btScalar(M_PI));
 
 	btGeneric6DofSpring2Constraint *lShldrConstraint = new btGeneric6DofSpring2Constraint(*upWaistBody, *lUpArmBody, lShldrWaistFrame, lShldrArmFrame);
-	btVector3 lShldrLL(-M_PI, 0.0, -M_PI);
-	btVector3 lShldrUL(M_PI, 0.0, M_PI);
+	btVector3 lShldrLL(-M_PI, 0, -M_PI);
+	btVector3 lShldrUL(M_PI, 0, M_PI);
 	lShldrConstraint->setAngularLowerLimit(lShldrLL);
 	lShldrConstraint->setAngularUpperLimit(lShldrUL);
 	lShldrConstraint->enableSpring(3, true);
@@ -927,6 +928,7 @@ void HumanDemo::initPhysics()
 
     // Spawn one ragdoll
     btVector3 startOffset(0,-0.1,0.0);
+    //btVector3 startOffset(0,3,0.0);
     spawnHumanRig(startOffset, false);
 
     if (m_guiHelper != 0) { 
@@ -1017,6 +1019,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		btQuaternion root(0,0,0);
 		btQuaternion undo(0,0,0);
 		btQuaternion conv(0,0,0);
+		btQuaternion extra(0,0,0);
 		btQuaternion orientationA = a.getOrientation();
 		btQuaternion orientationB = b.getOrientation();
 		bool flip = false;
@@ -1059,6 +1062,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		    rot = btQuaternion(vAxis,M_PI_2);
 		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
 		    conv = btQuaternion(-90*M_PI/180,0,0);
+		    extra = btQuaternion(0,0,30*M_PI/180);
 		    //root = btQuaternion(180*M_PI/180,0,-90*M_PI/180);
 		    //root = pRot.inverse() * root;
 		    //rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
@@ -1077,6 +1081,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		    conv = btQuaternion(-90*M_PI/180,0,0);
 		    rot = btQuaternion(vAxis,M_PI_2);
 		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
+		    extra = btQuaternion(0,0,30*M_PI/180);
 		    flip = true;
 		    //orientationB = orientationB;
 		    //rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
@@ -1087,7 +1092,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 		//btQuaternion orientation = axis.inverse() * orientationB.inverse();
 		//btQuaternion orientation = axis.inverse() * (root.inverse() * rot.inverse() * orientationB * root).inverse() * axis;
 		btScalar y,p,r;
-		btQuaternion temp = conv * rot.inverse() * undo.inverse() *  orientationB * conv.inverse();
+		btQuaternion temp = conv * extra * rot.inverse() * undo.inverse() *  orientationB * conv.inverse();
 		//if (flip) {
 		//    temp = conv * (rot.inverse() * undo.inverse() *  orientationB).inverse() * conv.inverse();
 		//}
