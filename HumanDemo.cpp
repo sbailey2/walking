@@ -14,6 +14,7 @@
 */
 
 #include <iostream>
+#include <iomanip>
 
 #include <vector>
 
@@ -49,7 +50,7 @@ private:
 public:
     JointEvaluator(const std::string &n) : name(n) {}
     virtual ~JointEvaluator() {}
-    virtual void evaluate(btScalar &rx, btScalar &ry, btScalar &rz) = 0;
+    virtual void evaluate(std::vector<btScalar> &r) = 0;
     std::string getName() {return name;}
 };
 
@@ -76,16 +77,101 @@ public:
     }
     ~Joint3DOF() {}
     
-    virtual void evaluate(btScalar &rx, btScalar &ry, btScalar &rz)
+    virtual void evaluate(std::vector<btScalar> &r)
     {
 	btTransform gtA = constraint->getCalculatedTransformA();
 	btTransform gtB = constraint->getCalculatedTransformB();
 	btTransform local = axisTransform.inverse() * gtA.inverse() * gtB * axisOffset * axisTransform;
 	btMatrix3x3 m = local.getBasis();
+	btScalar rx, ry, rz;
 	m.getEulerZYX(rz, ry, rx);
 	rx *= 180 / M_PI;
 	ry *= 180 / M_PI;
 	rz *= 180 / M_PI;
+	
+	r.clear();
+	r.push_back(rx);
+	r.push_back(ry);
+	r.push_back(rz);
+    }
+};
+
+class Joint1DOF : public JointEvaluator
+{
+private:
+    btGeneric6DofSpring2Constraint *constraint;
+    int index;
+    
+public:
+    Joint1DOF(const std::string &n, btGeneric6DofSpring2Constraint *c, int i) :
+	JointEvaluator(n),
+	constraint(c),
+        index(i)
+    {}
+    ~Joint1DOF() {}
+    
+    virtual void evaluate(std::vector<btScalar> &r)
+    {
+	r.clear();
+        r.push_back(constraint->getAngle(index) * 180 / M_PI);
+    }
+};
+
+class JointOrientation : public JointEvaluator
+{
+private:
+    btRigidBody *body;
+    
+public:
+    JointOrientation(const std::string &n, btRigidBody *b) :
+	JointEvaluator(n),
+        body(b)
+    {}
+    ~JointOrientation() {}
+    
+    virtual void evaluate(std::vector<btScalar> &r)
+    {
+	btQuaternion rot = body->getOrientation();
+	btTransform t;
+	t.setIdentity();
+	t.setRotation(rot);
+	btMatrix3x3 m = t.getBasis();
+
+	btScalar rx, ry, rz;
+	m.getEulerZYX(rz, ry, rx);
+	rx *= 180 / M_PI;
+	ry *= 180 / M_PI;
+	rz *= 180 / M_PI;
+	btVector3 com = body->getCenterOfMassPosition();
+	
+	r.clear();
+	r.push_back(10*com[0]);
+	r.push_back(10*com[1]);
+	r.push_back(10*com[2]);
+	r.push_back(rx);
+	r.push_back(ry);
+	r.push_back(rz);
+    }
+};
+
+class JointBlank : public JointEvaluator
+{
+private:
+    int size;
+    
+public:
+    JointBlank(const std::string &n, int s) :
+	JointEvaluator(n),
+	size(s)
+    {}
+    ~JointBlank() {}
+    
+    virtual void evaluate(std::vector<btScalar> &r)
+    {
+	r.clear();
+	for (int i = 0; i < size; ++i) {
+	    r.push_back(0.0);
+	}
     }
 };
 
@@ -211,9 +297,6 @@ public:
 	rbInfo.m_friction = btScalar(0.8);
 	rbInfo.m_linearDamping = btScalar(0.9);
 	rbInfo.m_angularDamping = btScalar(0.9);
-	rbInfo.m_friction = btScalar(100);
-	rbInfo.m_linearDamping = btScalar(100);
-	rbInfo.m_angularDamping = btScalar(100);
 	
 	btRigidBody* body = new btRigidBody(rbInfo);
 	//std::cout << "Angular damping: " << body->getAngularDamping() << "\n";
@@ -368,7 +451,7 @@ public:
 	    torsoBody = localCreateRigidBody(btScalar(0.0), offset*transform, torsoShape);
 	}
 	else {
-	    torsoBody = localCreateRigidBody(btScalar(0.0), offset*transform, torsoShape);
+	    torsoBody = localCreateRigidBody(btScalar(1.0), offset*transform, torsoShape);
 	}
 	m_bodies.push_back(torsoBody);
 	m_parents.push_back(2);
@@ -397,7 +480,7 @@ public:
 	btVector3 vUpWaistOrigin = vRoot + btVector3(btScalar(0.0), btScalar(-0.12), btScalar(-0.01));
 	upWaistTransform.setOrigin(vUpWaistOrigin);
 	//upWaistTransform.setRotation(btQuaternion(vAxis, M_PI_2));
-	btRigidBody *upWaistBody = localCreateRigidBody(btScalar(0.0), offset*upWaistTransform, upWaistShape);
+	btRigidBody *upWaistBody = localCreateRigidBody(btScalar(1.0), offset*upWaistTransform, upWaistShape);
 	m_bodies.push_back(upWaistBody);
 	btTransform chestPivot;
 	chestPivot.setIdentity();
@@ -493,6 +576,8 @@ public:
 	m_parents.push_back(-1);
 	//m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0)), 4)); // 2
 
+	m_evaluators.push_back(new JointOrientation("root", buttBody));
+
 	// Right Thigh 5
 	btTransform rThighTransform;
 	rThighTransform.setIdentity();
@@ -577,6 +662,8 @@ public:
 	m_joints.push_back(rKneeConstraint);
 	m_parents.push_back(5);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(-1.0)), 6)); // 5
+
+	m_evaluators.push_back(new Joint1DOF("rtibia", rKneeConstraint, 0));
 
 	// Right Foot 7
 	btTransform rFootTransform;
@@ -672,6 +759,8 @@ public:
 	m_parents.push_back(8);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(-1.0)), 9)); // 9
 
+	m_evaluators.push_back(new Joint1DOF("ltibia", rKneeConstraint, 0));
+
 	// Left Foot 10
 	btTransform lFootTransform;
 	lFootTransform.setIdentity();
@@ -729,7 +818,8 @@ public:
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(1.0), btScalar(1.0)), 11)); // 12
 
 	btTransform rShldrAxisOffset;
-	rShldrAxisOffset.setIdentity();
+	rShldrAxisOffset.setIdentity();\
+	rShldrAxisOffset.setRotation(btQuaternion(0,30*M_PI/180,0));
 	m_evaluators.push_back(new Joint3DOF("rhumerus", rShldrConstraint, 180, 30, 90,
 					     rShldrAxisOffset));
 
@@ -768,6 +858,7 @@ public:
 	m_joints.push_back(rElbowConstraint);
 	m_parents.push_back(11);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0)), 12)); // 13
+	m_evaluators.push_back(new Joint1DOF("rradius", rElbowConstraint, 1));
 
 	// Right Hand 13
 	btTransform rHandTransform;
@@ -832,6 +923,7 @@ public:
 
 	btTransform lShldrAxisOffset;
 	lShldrAxisOffset.setIdentity();
+	lShldrAxisOffset.setRotation(btQuaternion(0,30*M_PI/180,0));
 	m_evaluators.push_back(new Joint3DOF("lhumerus", lShldrConstraint, 180, -30, -90,
 					     lShldrAxisOffset));
 
@@ -869,6 +961,7 @@ public:
 	m_joints.push_back(lElbowConstraint);
 	m_parents.push_back(14);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(-1.0)), 15)); // 17
+	m_evaluators.push_back(new Joint1DOF("lradius", lElbowConstraint, 1));
 
 	// Left Hand 16
 	btTransform lHandTransform;
@@ -887,6 +980,28 @@ public:
 	m_ownerWorld->addConstraint(lWristConstraint, true);
         m_joints.push_back(lWristConstraint);
 	m_parents.push_back(15);
+
+	// Add blank evaluators so that each frame is complete for the mocap conversion
+	/*m_evaluators.push_back(new JointBlank("rhand", 2));
+	m_evaluators.push_back(new JointBlank("lhand", 2));
+	m_evaluators.push_back(new JointBlank("rthumb", 2));
+	m_evaluators.push_back(new JointBlank("lthumb", 2));
+	m_evaluators.push_back(new JointBlank("thorax", 3));
+	m_evaluators.push_back(new JointBlank("upperback", 3));
+	m_evaluators.push_back(new JointBlank("lowerback", 3));
+	m_evaluators.push_back(new JointBlank("upperneck", 3));
+	m_evaluators.push_back(new JointBlank("lowerneck", 3));
+	m_evaluators.push_back(new JointBlank("head", 3));
+	m_evaluators.push_back(new JointBlank("rfoot", 2));
+	m_evaluators.push_back(new JointBlank("lfoot", 2));
+	m_evaluators.push_back(new JointBlank("rwrist", 1));
+	m_evaluators.push_back(new JointBlank("lwrist", 1));
+	m_evaluators.push_back(new JointBlank("rtoes", 1));
+	m_evaluators.push_back(new JointBlank("ltoes", 1));
+	m_evaluators.push_back(new JointBlank("rfingers", 1));
+	m_evaluators.push_back(new JointBlank("lfingers", 1));
+	m_evaluators.push_back(new JointBlank("rclavicle", 2));
+	m_evaluators.push_back(new JointBlank("lclavicle", 2));*/
     }
 
     virtual	~HumanRig ()
@@ -958,7 +1073,6 @@ public:
 	//btVector3 imp(10.0,0,0);
 	//foot->applyCentralImpulse(imp);
     }
-
 };
 
 
@@ -1259,11 +1373,17 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 	}*/
 
     // Debug printing stuffs
+    static int frameNum = 1;
+    std::cout << frameNum++ << "\n";
     for (int i = 0; i < m_rigs[0]->m_evaluators.size(); ++i) {
-	btScalar rx, ry, rz;
-	m_rigs[0]->m_evaluators[i]->evaluate(rx, ry, rz);
+	std::vector<btScalar> r;
+	m_rigs[0]->m_evaluators[i]->evaluate(r);
 	std::string name = m_rigs[0]->m_evaluators[i]->getName();
-	std::cout << name << " " << rx << " " << ry << " " << rz << "\n";
+	std::cout << name;
+	for (int i = 0; i < r.size(); ++i) {
+	    std::cout <<  " " << std::setprecision(5) << r[i];
+	}
+	std::cout << "\n";
     }
 	    
     /*int size = (idx - 1) * sizeof(float);
