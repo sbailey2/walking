@@ -18,13 +18,14 @@ class HumanEnv(Env):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((self.HOST, self.PORT))
         self.s.send(b'Hello!')
+        state = self.receive_state()
 
         # Height at which to fail the episode
         self.y_threshold = 0.5
 
         # Number of frames to concatenate together in the state
         self.window = window
-        self.dim = 25
+        self.dim = 22
         self.usedDim = self.process(np.ones(self.dim)).shape[0]
         self.state = np.zeros(self.usedDim*window)
 
@@ -33,12 +34,35 @@ class HumanEnv(Env):
 
         # Parameter for exponential average of the actions
         self.alpha = alpha
-        self.a = np.zeros(15)
+        self.a = np.zeros(16)
 
     def restore_socket(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((self.HOST, self.PORT))
         self.s.send(b'Hello!')
+
+    def receive_state(self):
+        stateSize = self.s.recv(4);
+        stateMemSize = struct.unpack('i',stateSize)[0]
+        print('Reading '+str(stateMemSize)+' bytes of state data')
+        state = self.s.recv(stateMemSize)
+        while len(state) < stateMemSize:
+            state += self.s.recv(stateMemSize - len(state))
+        state = np.asarray(np.fromstring(state,dtype='float32')).astype('double')
+        print('Read '+str(stateMemSize)+' bytes of state data')
+        return state
+
+    def send_action(self,action):
+        c = np.asarray(action)
+        self.s.send(np.asarray([len(c)]).astype('int32').tostring())
+        self.s.send(c.astype('float32').tostring())
+
+    def send_reset(self):
+        zeros = np.zeros(18).astype(int)
+        buff = struct.pack('%si' % len(zeros), *zeros)
+        self.s.send(np.asarray([18]).astype('int32').tostring())
+        self.s.send(b'RESET')
+        self.s.send(buff[:67])
 
     @property
     def observation_space(self):
@@ -46,47 +70,34 @@ class HumanEnv(Env):
 
     @property
     def action_space(self):
-        return Box(low=-1.0, high=1.0, shape=(15,))
+        return Box(low=-30.0, high=30.0, shape=(16,))
 
     def process(self, state):
         mask = np.ones(self.dim).astype(bool)
-        mask[[0,2]] = False # Drop the x and z coordinates of the root joint
+        mask[[0,1,2]] = False # Drop the x and z coordinates of the root joint
         return state[mask]
 
     def reset(self):
         # Reset the simulation
-        self.s.send(b'RESET')
-        zeros = np.zeros(20).astype(int)
-        buff = struct.pack('%si' % len(zeros), *zeros)
-        self.s.send(buff)
+        self.send_reset()
 
         # Get the state
-        stateSize = self.s.recv(4);
-        stateSize = struct.unpack('i',stateSize)[0]
-        state = self.s.recv(1000)
-        while len(state) < stateSize:
-            state += self.s.recv(1000)
-        state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+        state = self.receive_state()
+
         self.state = np.zeros(self.usedDim*self.window)
         #self.state[self.usedDim*(self.window-1):] = state
         #print(state)
 
         # Go one more step because the current state is invalid
-        c = np.zeros(15)
-        buff = struct.pack('%sf' % len(c), *c)
-        self.s.send(buff)
+        c = np.zeros(16)
+        self.send_action(c)
 
         # Get the state
-        stateSize = self.s.recv(4);
-        stateSize = struct.unpack('i',stateSize)[0]
-        state = self.s.recv(1000)
-        while len(state) < stateSize:
-            state += self.s.recv(1000)
-        state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+        state = self.receive_state()
         self.state[self.usedDim*(self.window-1):] = self.process(state)
 
         self.steps_beyond_done = None
-        self.a = np.zeros(15)
+        self.a = np.zeros(16)
         self.lastX = 0.0
         return np.array(self.state)
 
@@ -98,17 +109,10 @@ class HumanEnv(Env):
         
         # Apply the action
         for _ in range(self.hold):
-            c = np.asarray(action)
-            buff = struct.pack('%sf' % len(c), *c)
-            self.s.send(buff)
+            self.send_action(action)
 
             # Receive the state
-            stateSize = self.s.recv(4);
-            stateSize = struct.unpack('i',stateSize)[0]
-            state = self.s.recv(1000)
-            while len(state) < stateSize:
-                state += self.s.recv(1000)
-            state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+            state = self.receive_state()
         
         # Update the state
         self.state[:self.usedDim*(self.window-1)] = self.state[self.usedDim:]

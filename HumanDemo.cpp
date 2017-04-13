@@ -93,6 +93,18 @@ public:
 	r.push_back(rx);
 	r.push_back(ry);
 	r.push_back(rz);
+
+	// Debugging stuff to see how the joint angles relate to the body rotations
+	btScalar cx = -constraint->getAngle(0);
+	btScalar cy = -constraint->getAngle(1);
+	btScalar cz = -constraint->getAngle(2);
+	m = (gtA.inverse() * gtB).getBasis();
+	m.getEulerZYX(rz, ry, rx);
+	if ((cx-rx)*(cx-rx) + (cy-ry)*(cy-ry) + (cz-rz)*(cz-rz) > 1e-3) {
+	    std::cout << getName() << ": joint angle and rigid body angles differ\n";
+	    std::cout << "Joint angles: " << cx << " " << cy << " " << cz << "\n";
+	    std::cout << "Body angles: " << rx << " " << ry << " " << rz << "\n";
+	}
     }
 };
 
@@ -193,7 +205,7 @@ public:
 	:CommonRigidBodyBase(helper),
 	 m_fullState(false)
     {
-	/*serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+	serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 	sockaddr_in serverAddr;
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = 8888;
@@ -216,7 +228,7 @@ public:
 	char buffer[1000];
 	bzero(buffer, 1000);
 	int n = read(clientSocket, buffer, 500);
-	std::cout << "Received " << buffer << "\n";*/
+	std::cout << "Received " << buffer << "\n";
     }
 
     void initPhysics();
@@ -225,8 +237,8 @@ public:
 	
     virtual ~HumanDemo()
     {
-	//close(clientSocket);
-	//close(serverSocket);
+	close(clientSocket);
+	close(serverSocket);
     }
 	
     void spawnHumanRig(const btVector3& startOffset, bool bFixed);
@@ -283,6 +295,10 @@ public:
     std::vector<JointEvaluator*>     m_evaluators;
     std::vector<int>                 m_parents;
     std::vector<std::pair<btVector3, int> > m_controls;
+
+    typedef std::pair<btGeneric6DofSpring2Constraint*, int> JointControl;
+    std::vector<JointControl> m_jointControls;
+    
 
     btRigidBody* localCreateRigidBody (btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
     {
@@ -451,7 +467,7 @@ public:
 	    torsoBody = localCreateRigidBody(btScalar(0.0), offset*transform, torsoShape);
 	}
 	else {
-	    torsoBody = localCreateRigidBody(btScalar(1.0), offset*transform, torsoShape);
+	    torsoBody = localCreateRigidBody(btScalar(0.0), offset*transform, torsoShape);
 	}
 	m_bodies.push_back(torsoBody);
 	m_parents.push_back(2);
@@ -620,6 +636,10 @@ public:
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0)), 5)); // 3
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(1.0), btScalar(0.0)), 5)); // 4
 
+	m_jointControls.push_back(JointControl(rHipConstraint,3));
+	m_jointControls.push_back(JointControl(rHipConstraint,4));
+	m_jointControls.push_back(JointControl(rHipConstraint,5));
+
 	btTransform rThighAxisOffset;
 	rThighAxisOffset.setIdentity();
 	rThighAxisOffset.setRotation(btQuaternion(0,0,20*M_PI/180));
@@ -662,6 +682,8 @@ public:
 	m_joints.push_back(rKneeConstraint);
 	m_parents.push_back(5);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(-1.0)), 6)); // 5
+
+	m_jointControls.push_back(JointControl(rKneeConstraint,5));
 
 	m_evaluators.push_back(new Joint1DOF("rtibia", rKneeConstraint, 0));
 
@@ -717,6 +739,10 @@ public:
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0)), 8)); // 7
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(1.0), btScalar(1.0)), 8)); // 8
 
+	m_jointControls.push_back(JointControl(lHipConstraint,3));
+	m_jointControls.push_back(JointControl(lHipConstraint,4));
+	m_jointControls.push_back(JointControl(lHipConstraint,5));
+
 	btTransform lThighAxisOffset;
 	lThighAxisOffset.setIdentity();
 	lThighAxisOffset.setRotation(btQuaternion(0,0,-20*M_PI/180));
@@ -758,6 +784,8 @@ public:
 	m_joints.push_back(lKneeConstraint);
 	m_parents.push_back(8);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(-1.0)), 9)); // 9
+
+	m_jointControls.push_back(JointControl(lKneeConstraint,5));
 
 	m_evaluators.push_back(new Joint1DOF("ltibia", rKneeConstraint, 0));
 
@@ -817,6 +845,10 @@ public:
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0)), 11)); // 11
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(1.0), btScalar(1.0)), 11)); // 12
 
+	m_jointControls.push_back(JointControl(rShldrConstraint,3));
+	m_jointControls.push_back(JointControl(rShldrConstraint,4));
+	m_jointControls.push_back(JointControl(rShldrConstraint,5));
+
 	btTransform rShldrAxisOffset;
 	rShldrAxisOffset.setIdentity();\
 	rShldrAxisOffset.setRotation(btQuaternion(0,30*M_PI/180,0));
@@ -859,6 +891,8 @@ public:
 	m_parents.push_back(11);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(1.0)), 12)); // 13
 	m_evaluators.push_back(new Joint1DOF("rradius", rElbowConstraint, 1));
+
+	m_jointControls.push_back(JointControl(rElbowConstraint,4));
 
 	// Right Hand 13
 	btTransform rHandTransform;
@@ -921,6 +955,10 @@ public:
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(-1.0)), 14)); // 15
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(1.0), btScalar(-1.0)), 14)); // 16
 
+	m_jointControls.push_back(JointControl(lShldrConstraint,3));
+	m_jointControls.push_back(JointControl(lShldrConstraint,4));
+	m_jointControls.push_back(JointControl(lShldrConstraint,5));
+
 	btTransform lShldrAxisOffset;
 	lShldrAxisOffset.setIdentity();
 	lShldrAxisOffset.setRotation(btQuaternion(0,30*M_PI/180,0));
@@ -961,6 +999,9 @@ public:
 	m_joints.push_back(lElbowConstraint);
 	m_parents.push_back(14);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(0.0), btScalar(0.0), btScalar(-1.0)), 15)); // 17
+
+	m_jointControls.push_back(JointControl(lElbowConstraint,4));
+	
 	m_evaluators.push_back(new Joint1DOF("lradius", lElbowConstraint, 1));
 
 	// Left Hand 16
@@ -1045,9 +1086,9 @@ public:
     std::pair<btVector3, int> *GetControls() {return &m_controls[0];}
     int GetControlSize() {return m_controls.size();}
 
-    void ApplyControl(const std::vector<double> &c)
+    void ApplyControl(const std::vector<double> &controls)
     {
-	const double MAX_IMPULSE = 1.5;
+	/*const double MAX_IMPULSE = 1.5;
 	std::vector<double> inputs(c);
 	for (int i = 0; i < inputs.size(); ++i) {
 	    if (inputs[i] < -MAX_IMPULSE) {
@@ -1068,10 +1109,18 @@ public:
 	    t = trans * t;
 	    b->applyTorqueImpulse(t);
 	    p->applyTorqueImpulse(-t);
-	}
+	    }*/
 	//btRigidBody *foot = m_bodies[6];
 	//btVector3 imp(10.0,0,0);
 	//foot->applyCentralImpulse(imp);
+
+	for (int i = 0; i < m_jointControls.size() && i < controls.size(); ++i) {
+	    btGeneric6DofSpring2Constraint* c = m_jointControls[i].first;
+	    int index = m_jointControls[i].second;
+	    c->enableMotor(index, true);
+	    c->setMaxMotorForce(index, 10);
+	    c->setTargetVelocity(index, controls[i]);
+	}
     }
 };
 
@@ -1174,233 +1223,48 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
     //	
     
     // Send the state of the system
-    /*float buffer[1000];
+    float buffer[1000];
     char *newBuff = (char*)buffer;
-    int idx = 1;
-    if (m_fullState) {
-	for (int i = 0; i < m_rigs[0]->GetBodySize(); ++i) {
-	    btTransform trans = m_rigs[0]->GetBodies()[i]->getWorldTransform();
-	    btVector3 t = trans.getOrigin();
-	    btVector3 v = m_rigs[0]->GetBodies()[i]->getLinearVelocity();
-	    btVector3 w = m_rigs[0]->GetBodies()[i]->getAngularVelocity();
-	    btMatrix3x3 r = trans.getBasis();
-	    for (int j = 0; j < 3; ++j) {
-		buffer[idx++] = t[j];
-		buffer[idx++] = v[j];
-		buffer[idx++] = w[j];
-	    }
-	    for (int j = 0; j < 3; ++j) {
-		for (int k = 0; k < 3; ++k) {
-		    buffer[idx++] = r[j][k];
-		}
-	    }
-	}
-    }
-    else {
-	// Print the location and rotation of the root joint
-	btTransform trans = m_rigs[0]->GetBodies()[4]->getWorldTransform();
-	btVector3 t = trans.getOrigin();
-	btMatrix3x3 rootMat = trans.getBasis();
-	btScalar rootY, rootP, rootR;
-	rootMat.getEulerYPR(rootY, rootP, rootR);
-	buffer[idx++] = t[0];
-	buffer[idx++] = t[1];
-	buffer[idx++] = t[2];
-	buffer[idx++] = rootY;
-	buffer[idx++] = rootP;
-	buffer[idx++] = rootR;
 
-	// Print the angle of each joint
-	for (int i = 0; i < m_rigs[0]->GetJointSize(); ++i) {
-	    btTypedConstraint *constraint = m_rigs[0]->GetJoints()[i];
-	    btHingeConstraint *hinge = dynamic_cast<btHingeConstraint*>(constraint);
-	    if (hinge != 0) {
-		buffer[idx++] = hinge->getHingeAngle();
-	    }
-	    btGeneric6DofSpring2Constraint *cone = dynamic_cast<btGeneric6DofSpring2Constraint*>(constraint);
-	    if (cone != 0 && dynamic_cast<btFixedConstraint*>(constraint) == 0) {
-	        btRigidBody a = cone->getRigidBodyA();
-		btRigidBody b = cone->getRigidBodyB();
-		btQuaternion worldAxis(btVector3(0.0,1.0,0.0),-M_PI);
-		btQuaternion axis(0,0,0);
-		btQuaternion rot(0,0,0);
-		btQuaternion root(0,0,0);
-		btQuaternion undo(0,0,0);
-		btQuaternion conv(0,0,0);
-		btQuaternion extra(0,0,0);
-		btQuaternion orientationA = a.getOrientation();
-		btQuaternion orientationB = b.getOrientation();
-		bool flip = false;
-		bool flipX = false;
-		if (i == 5 || i == 8) { // Knees
-		    float angle = cone->getAngle(2);
-		    buffer[idx++] = angle + M_PI_4;
-		    continue;
-		}
-		if (i == 11 || i == 14) { // Elbows
-		    float angle = cone->getAngle(1);
-		    buffer[idx++] = angle;
-		    continue;
-		}
-		if (i == 4) { // RUpLeg
-		    btQuaternion pRot = m_rigs[0]->GetBodies()[4]->getWorldTransform().getRotation();
-		    btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
-	            axis.setEulerZYX(20*M_PI/180,0,0);
-		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
-		    conv = btQuaternion(0,0,0);
-		    rot = btQuaternion(vAxis,20*M_PI/180);
-		    //flip = true;
-		    flipX = true;
-                }
-		else if (i == 7) { // LUpLeg
-		    btQuaternion pRot = m_rigs[0]->GetBodies()[4]->getWorldTransform().getRotation();
-		    btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
-	            axis.setEulerZYX(-20*M_PI/180,0,0);
-		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
-		    conv = btQuaternion(0,0,0);
-		    rot = btQuaternion(vAxis,-20*M_PI/180);
-		    //flip = true;
-		    flipX = true;
-                }
-		else if (i == 10) { // RShldr - Becomes LShldr in the mocap data
-	            btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
-		    btQuaternion pRot = m_rigs[0]->GetBodies()[0]->getWorldTransform().getRotation();
-	            //axis.setEulerZYX(30*M_PI/180,180*M_PI/180,90*M_PI/180);
-		    axis = btQuaternion(0,0,-90*M_PI/180)*btQuaternion(-30*M_PI/180,0,0)*btQuaternion(0,180*M_PI/180,0);
-		    rot = btQuaternion(vAxis,M_PI_2);
-		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
-		    conv = btQuaternion(-90*M_PI/180,0,0);
-		    extra = btQuaternion(0,0,30*M_PI/180);
-		    //root = btQuaternion(180*M_PI/180,0,-90*M_PI/180);
-		    //root = pRot.inverse() * root;
-		    //rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
-		    //rot.setEulerZYX(120,80,20);
-		    //axis = rot * axis;
-		    //axis.setEulerZYX(0,0,0);
-		    //axis = axis * rot.inverse();
-                }
-		else if (i == 13) { // LShldr
-	            btVector3 vAxis = btVector3(btScalar(1.0), btScalar(0.0), btScalar(0.0));
-		    btQuaternion pRot = m_rigs[0]->GetBodies()[0]->getWorldTransform().getRotation();
-	            axis.setEulerZYX(30*M_PI/180,180*M_PI/180,90*M_PI/180);
-		    axis = btQuaternion(0,0,90*M_PI/180)*btQuaternion(30*M_PI/180,0,0)*btQuaternion(0,180*M_PI/180,0);
-		    //root = btQuaternion(180*M_PI/180,0,-90*M_PI/180);
-		    //root = pRot.inverse() * root;
-		    conv = btQuaternion(-90*M_PI/180,0,0);
-		    rot = btQuaternion(vAxis,M_PI_2);
-		    undo = pRot * btQuaternion(0,90*M_PI/180,0).inverse();
-		    extra = btQuaternion(0,0,30*M_PI/180);
-		    flip = true;
-		    //orientationB = orientationB;
-		    //rot = btQuaternion(-90*M_PI/180,0,0)*btQuaternion(0,90*M_PI/180,0);
-		    //rot = rot * pRot * rot.inverse();
-		    //rot = pRot.inverse() * rot;
-                }
-		//btQuaternion orientation = rot.inverse() * orientationB.inverse();// * orientationA.inverse();
-		//btQuaternion orientation = axis.inverse() * orientationB.inverse();
-		//btQuaternion orientation = axis.inverse() * (root.inverse() * rot.inverse() * orientationB * root).inverse() * axis;
-		btScalar y,p,r;
-		btQuaternion temp = conv * extra * rot.inverse() * undo.inverse() *  orientationB * conv.inverse();
-		//if (flip) {
-		//    temp = conv * (rot.inverse() * undo.inverse() *  orientationB).inverse() * conv.inverse();
-		//}
-		btMatrix3x3 global(temp);
-		global.getEulerZYX(y,p,r);
-		if (flip) {
-		    r = -r;
-		}
-		if (flipX) {
-		    y = -y;
-		}
-		btQuaternion temp2 = btQuaternion(0,r,0)*btQuaternion(p,0,0)*btQuaternion(0,0,y);
-		btQuaternion orientation = axis.inverse() * temp2 * axis;
-		orientation = orientationB; // Disable fancy mocap conversion
-		btMatrix3x3 mat(orientation);
-		mat.getEulerZYX(y,p,r);
-		//y = orientation.x();
-		//p = orientation.y();
-		//r = orientation.z();
-		buffer[idx++] = y;
-		buffer[idx++] = p;
-		buffer[idx++] = r;
-		mat.getEulerYPR(y,p,r);
-		static int itr = 0;
-		if (i == 4) {
-		    ++itr;
-		    if (itr % 10 == 1) {
-			//std::cout << "YPR: " << y*180/M_PI << ", " << p*180/M_PI << ", " << r*180/M_PI << "\n";
-			btTransform parentTrans = m_rigs[0]->GetBodies()[0]->getWorldTransform();
-			btMatrix3x3 pInv = btMatrix3x3(orientationB);
-			btMatrix3x3 a = btMatrix3x3(axis);
-			//std::cout << "Pinv:\n";
-			for (int row = 0; row < 3; ++row) {
-	                    for (int column = 0; column < 3; ++column) {
-	                        //std::cout << pInv[row][column] << " ";
-                            }
-			    //std::cout << "\n";
-			}
-			//std::cout << "A: \n";
-			for (int row = 0; row < 3; ++row) {
-	                    for (int column = 0; column < 3; ++column) {
-	                        //std::cout << a[row][column] << " ";
-                            }
-			    //std::cout << "\n";
-			}
-		    }
-		}
-	    }
-	}
-
-	// Print head information
-	trans = m_rigs[0]->GetBodies()[1]->getWorldTransform();
-	t = trans.getOrigin();
-	buffer[idx++] = t[0];
-	buffer[idx++] = t[1];
-	buffer[idx++] = t[2];
-
-	// Print foot information
-	trans = m_rigs[0]->GetBodies()[7]->getWorldTransform();
-	t = trans.getOrigin();
-	buffer[idx++] = t[0];
-	buffer[idx++] = t[1];
-	buffer[idx++] = t[2];
-
-	trans = m_rigs[0]->GetBodies()[10]->getWorldTransform();
-	t = trans.getOrigin();
-	buffer[idx++] = t[0];
-	buffer[idx++] = t[1];
-	buffer[idx++] = t[2];
-	}*/
-
-    // Debug printing stuffs
-    static int frameNum = 1;
-    std::cout << frameNum++ << "\n";
+    // Get the state of the system
+    int buffIdx = 0;
     for (int i = 0; i < m_rigs[0]->m_evaluators.size(); ++i) {
 	std::vector<btScalar> r;
 	m_rigs[0]->m_evaluators[i]->evaluate(r);
 	std::string name = m_rigs[0]->m_evaluators[i]->getName();
-	std::cout << name;
 	for (int i = 0; i < r.size(); ++i) {
-	    std::cout <<  " " << std::setprecision(5) << r[i];
+	    //std::cout <<  " " << std::setprecision(5) << r[i];
+	    buffer[buffIdx++] = r[i];
 	}
-	std::cout << "\n";
+	//std::cout << "\n";
     }
-	    
-    /*int size = (idx - 1) * sizeof(float);
+
+
+    int size = buffIdx * sizeof(float);
     ((int*)newBuff)[0] = size;
-    //int n = write(clientSocket, &size, sizeof(int));
-    int n = write(clientSocket, newBuff, idx * sizeof(float));
+    std::cout << "Writing " << size << " bytes of state data\n";
+    int n = write(clientSocket, &size, sizeof(int));
+    n = write(clientSocket, newBuff, buffIdx * sizeof(float));
+    std::cout << "Wrote " << size << " bytes of state data\n";
 
 
     // Read the control from the socket
-    //int controlSize;
-    //read(clientSocket, (char*)&controlSize, sizeof(int));
-    std::vector<double> c(18);
+    int controlSize;
+    read(clientSocket, (char*)&controlSize, sizeof(int));
+    std::cout << "Reading " << controlSize * sizeof(float) << " bytes of control data\n";
+    char *temp = (char*)&controlSize;
+    std::cout << "Bytes read:";
+    for (int i = 0; i < 4; ++i) {
+	std::cout << " " << (int)temp[i];
+    }
+    std::cout << "\n";
+    std::vector<double> controls(controlSize);
     char *buffPtr = newBuff;
-    while (buffPtr - newBuff < 18 * sizeof(float)) {
-	n = read(clientSocket, buffPtr, 1000*sizeof(float));
+    while (buffPtr - newBuff < controlSize * sizeof(float)) {
+	n = read(clientSocket, buffPtr, controlSize*sizeof(float) - (buffPtr - newBuff));
 	buffPtr += n;
     }
+    std::cout << "Read " << controlSize * sizeof(float) << " bytes of control data\n";
 
     // Check if we want to reset
     std::string response(newBuff);
@@ -1410,13 +1274,13 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
     }
 
     // If not, then apply the controls
-    for (int i=0; i<18; ++i) {
-	c[i] = buffer[i];
+    for (int i=0; i<controlSize; ++i) {
+	controls[i] = buffer[i];
     }
 
     for (int r=0; r<m_rigs.size(); r++) {
-	m_rigs[r]->ApplyControl(c);
-	}*/
+	m_rigs[r]->ApplyControl(controls);
+    }
 }
 
 #if 0

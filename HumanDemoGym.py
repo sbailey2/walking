@@ -1,5 +1,8 @@
 import numpy as np
 
+import sys
+sys.path.append('/home/sbailey/Documents/CS294-129/project/rllab/')
+
 import gym
 import HumanEnv
 

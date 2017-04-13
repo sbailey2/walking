@@ -105,22 +105,25 @@ iteration = 0
 #while True:
 states = []
 amc = None
-c = np.zeros(14)
-alpha = 0.5
+c = np.zeros(16)
+alpha = 0.9
 try:
     while True:
 
 #for i in range(200):
         stateSize = s.recv(4);
-        stateSize = struct.unpack('i',stateSize)[0]
-        state = s.recv(1000)
-        while len(state) < stateSize:
-            state += s.recv(1000)
-        state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
-        assert(state.shape[0] == 34)
+        stateMemSize = struct.unpack('i',stateSize)[0]
+        stateSize = stateMemSize / 4
+        state = s.recv(stateMemSize)
+        while len(state) < stateMemSize:
+            state += s.recv(stateMemSize - len(state))
+        #state = np.asarray([struct.unpack('f',state[i:i+4])[0] for i in range(0,len(state),4)])
+        state = np.asarray(np.fromstring(state,dtype='float32')).astype('double')
+        #assert(state.shape[0] == 34)
         if iteration % 60 == 0:
-            print(state.shape)
-            print(state[-9:-6])
+            #print(state.shape)
+            #print(state[-9:-6])
+            print(state)
             root = state[:3]
             footR = state[-6:-3]
             footL = state[-3:]
@@ -129,13 +132,13 @@ try:
             up = np.asarray([0,1,0])
             norm = np.cross(foot, up)
             dist = np.sqrt(np.sum(np.square((root-footL).dot(norm))))
-        newC = 0.0 * np.random.uniform(-1.0,1.0,14)
-        newC[8:] *= 0.2
+        newC = 1.0 * np.random.uniform(-30,30,16)
+        #newC[8:] *= 0.2
         #newC[0] = 0.5
-        #newC[3] = 0.5
+        #newC[4] = -1
         #newC[12] = 0.5
         c = alpha*c + (1-alpha)*newC
-        buff = struct.pack('%sf' % len(c), *c)
+        #buff = struct.pack('%sf' % len(c), *c)
         iteration += 1
 
         if amc is None:
@@ -145,25 +148,27 @@ try:
         #if iteration % 10 == 0:
         #    print('YPR: '+str(r[0])+' '+str(r[1])+' '+str(r[2]))
 
-        if iteration % 20000 == 0:
+        if iteration % 200 == 0:
             print('Iteration '+str(iteration))
             print(state.shape)
             print(state)
-            zeros = np.zeros(14).astype(int)
+            zeros = np.zeros(18).astype(int)
             buff = struct.pack('%si' % len(zeros), *zeros)
             print(len(b'RESET'))
             #print(dir(buff))
             #buff[:5] = b'RESET'
+            s.send(np.asarray([18]).astype('int32').tostring())
             s.send(b'RESET')
-            print(len(buff[:51]))
-            s.send(buff[:51])
+            print(len(buff[:67]))
+            s.send(buff[:67])
         else:
-            s.send(buff)
+            s.send(np.asarray([len(c)]).astype('int32').tostring())
+            s.send(c.astype('float32').tostring())
 except KeyboardInterrupt:
     pass
 s.close()
         
-amc = convertToAMC(states)
-fileName='simTest.amc'
-with open(fileName,'w') as file:
-    file.write(amc)
+#amc = convertToAMC(states)
+#fileName='simTest.amc'
+#with open(fileName,'w') as file:
+#    file.write(amc)
