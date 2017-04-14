@@ -93,18 +93,6 @@ public:
 	r.push_back(rx);
 	r.push_back(ry);
 	r.push_back(rz);
-
-	// Debugging stuff to see how the joint angles relate to the body rotations
-	btScalar cx = -constraint->getAngle(0);
-	btScalar cy = -constraint->getAngle(1);
-	btScalar cz = -constraint->getAngle(2);
-	m = (gtA.inverse() * gtB).getBasis();
-	m.getEulerZYX(rz, ry, rx);
-	if ((cx-rx)*(cx-rx) + (cy-ry)*(cy-ry) + (cz-rz)*(cz-rz) > 1e-3) {
-	    std::cout << getName() << ": joint angle and rigid body angles differ\n";
-	    std::cout << "Joint angles: " << cx << " " << cy << " " << cz << "\n";
-	    std::cout << "Body angles: " << rx << " " << ry << " " << rz << "\n";
-	}
     }
 };
 
@@ -196,6 +184,7 @@ class HumanDemo : public CommonRigidBodyBase
 
     int serverSocket;
     int clientSocket;
+    int receiveSocket;
 	
     btAlignedObjectArray<class HumanRig*> m_rigs;
 	
@@ -224,11 +213,19 @@ public:
 	std::cout << "Waiting for connection...\n";
 	clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &sin_size);
 
+	if (listen(serverSocket, 1) != 0) {
+	    std::cout << "Error listening on the socket\n";
+	    exit(errno);
+	}
+
+	std::cout << "Waiting for connection...\n";
+	receiveSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &sin_size);
+
 	// Receive a message
-	char buffer[1000];
-	bzero(buffer, 1000);
-	int n = read(clientSocket, buffer, 500);
-	std::cout << "Received " << buffer << "\n";
+	//char buffer[1000];
+	//bzero(buffer, 1000);
+	//int n = read(clientSocket, buffer, 500);
+	//std::cout << "Received " << buffer << "\n";
     }
 
     void initPhysics();
@@ -246,6 +243,9 @@ public:
     //	virtual void keyboardCallback(unsigned char key, int x, int y);
 	
     void setMotorTargets(btScalar deltaTime);
+
+    virtual void preStepAction(float deltaTime);
+    virtual void postStepAction(float deltaTime);
 	
     void resetCamera()
     {
@@ -326,8 +326,8 @@ public:
 	: m_ownerWorld (ownerWorld)
     {
 	btVector3 vUp(0, 1, 0);
-	btScalar damping(0.0);
-	btScalar stiffness(0.0);
+	btScalar damping(10.0);
+	btScalar stiffness(10.0);
 
 	// Set up the world and stuffs
 	m_ownerWorld->getSolverInfo().m_solverMode = SOLVER_USE_WARMSTARTING | SOLVER_SIMD | SOLVER_USE_2_FRICTION_DIRECTIONS | SOLVER_ENABLE_FRICTION_DIRECTION_CACHING;
@@ -1022,6 +1022,13 @@ public:
         m_joints.push_back(lWristConstraint);
 	m_parents.push_back(15);
 
+	for (int i = 0; i < m_jointControls.size(); ++i) {
+	    btGeneric6DofSpring2Constraint* c = m_jointControls[i].first;
+	    int index = m_jointControls[i].second;
+	    c->enableMotor(index, true);
+	    c->setMaxMotorForce(index, 2.0);
+	}
+
 	// Add blank evaluators so that each frame is complete for the mocap conversion
 	/*m_evaluators.push_back(new JointBlank("rhand", 2));
 	m_evaluators.push_back(new JointBlank("lhand", 2));
@@ -1117,8 +1124,6 @@ public:
 	for (int i = 0; i < m_jointControls.size() && i < controls.size(); ++i) {
 	    btGeneric6DofSpring2Constraint* c = m_jointControls[i].first;
 	    int index = m_jointControls[i].second;
-	    c->enableMotor(index, true);
-	    c->setMaxMotorForce(index, 10);
 	    c->setTargetVelocity(index, controls[i]);
 	}
     }
@@ -1134,6 +1139,83 @@ void humanPreTickCallback (btDynamicsWorld *world, btScalar timeStep)
 	
 }
 
+void HumanDemo::preStepAction(float deltaTime)
+{
+    // Read the control from the socket
+    float buffer[1000];
+    char *newBuff = (char*)buffer;
+    int controlSize;
+    read(receiveSocket, (char*)&controlSize, sizeof(int));
+    //std::cout << "Reading " << controlSize * sizeof(float) << " bytes of control data\n";
+    //char *temp = (char*)&controlSize;
+    //std::cout << "Bytes read:";
+    //for (int i = 0; i < 4; ++i) {
+	//std::cout << " " << (int)temp[i];
+    //}
+    //std::cout << "\n";
+    std::vector<double> controls(controlSize);
+    char *buffPtr = newBuff;
+    int tries = 0;
+    while (buffPtr - newBuff < controlSize * sizeof(float)) {
+	int n = read(receiveSocket, buffPtr, controlSize * sizeof(float) - (buffPtr - newBuff));
+	//int n = read(clientSocket, buffPtr, 1000);
+	buffPtr += n;
+	++tries;
+    }
+    //std::cout << "Read " << controlSize * sizeof(float) << " bytes of control data\n";
+    //std::cout << "Read in " << tries << " iterations\n";
+
+    // Check if we want to reset
+    std::string response(newBuff);
+    if (response == "RESET") {
+	m_reset = true;
+	return;
+    }
+
+    // If not, then apply the controls
+    for (int i=0; i<controlSize; ++i) {
+	controls[i] = buffer[i];
+    }
+
+    for (int r=0; r<m_rigs.size(); r++) {
+	m_rigs[r]->ApplyControl(controls);
+    }
+}
+
+void HumanDemo::postStepAction(float deltaTime)
+{
+    // Send the state of the system
+    float buffer[1000];
+    char *newBuff = (char*)buffer;
+
+    // Get the state of the system
+    int buffIdx = 0;
+    for (int i = 0; i < m_rigs[0]->m_evaluators.size(); ++i) {
+	std::vector<btScalar> r;
+	m_rigs[0]->m_evaluators[i]->evaluate(r);
+	//std::string name = m_rigs[0]->m_evaluators[i]->getName();
+	for (int i = 0; i < r.size(); ++i) {
+	    //std::cout <<  " " << std::setprecision(5) << r[i];
+	    buffer[buffIdx++] = r[i];
+	}
+	//std::cout << "\n";
+     }
+
+    //std::vector<btScalar> r;
+    //m_rigs[0]->m_evaluators[1]->evaluate(r);
+    //std::cout << "Joint 1:";
+    //for (int i = 0; i < r.size(); ++i) {
+    //std::cout << " " << r[i];
+    //}
+    //std::cout << "\n";
+
+     int size = buffIdx * sizeof(float);
+    ((int*)newBuff)[0] = size;
+    //std::cout << "Writing " << size << " bytes of state data\n";
+    int n = write(clientSocket, &size, sizeof(int));
+    n = write(clientSocket, newBuff, buffIdx * sizeof(float));
+    //std::cout << "Wrote " << size << " bytes of state data\n";
+}
 
 
 void HumanDemo::initPhysics()
@@ -1166,7 +1248,7 @@ void HumanDemo::initPhysics()
 
     m_dynamicsWorld = new btDiscreteDynamicsWorld(m_dispatcher,m_broadphase,m_solver,m_collisionConfiguration);
 
-    m_dynamicsWorld->setInternalTickCallback(humanPreTickCallback,this,true);
+    //m_dynamicsWorld->setInternalTickCallback(humanPreTickCallback,this,true);
     if (m_guiHelper != 0) {
 	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
     }
@@ -1231,42 +1313,49 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
     for (int i = 0; i < m_rigs[0]->m_evaluators.size(); ++i) {
 	std::vector<btScalar> r;
 	m_rigs[0]->m_evaluators[i]->evaluate(r);
-	std::string name = m_rigs[0]->m_evaluators[i]->getName();
+	//std::string name = m_rigs[0]->m_evaluators[i]->getName();
 	for (int i = 0; i < r.size(); ++i) {
 	    //std::cout <<  " " << std::setprecision(5) << r[i];
 	    buffer[buffIdx++] = r[i];
 	}
 	//std::cout << "\n";
+     }
+
+    std::vector<btScalar> r;
+    m_rigs[0]->m_evaluators[1]->evaluate(r);
+    std::cout << "Joint 1:";
+    for (int i = 0; i < r.size(); ++i) {
+	std::cout << " " << r[i];
     }
+    std::cout << "\n";
 
-
-    int size = buffIdx * sizeof(float);
+     int size = buffIdx * sizeof(float);
     ((int*)newBuff)[0] = size;
-    std::cout << "Writing " << size << " bytes of state data\n";
+    //std::cout << "Writing " << size << " bytes of state data\n";
     int n = write(clientSocket, &size, sizeof(int));
     n = write(clientSocket, newBuff, buffIdx * sizeof(float));
-    std::cout << "Wrote " << size << " bytes of state data\n";
+    //std::cout << "Wrote " << size << " bytes of state data\n";
 
 
     // Read the control from the socket
     int controlSize;
     read(clientSocket, (char*)&controlSize, sizeof(int));
-    std::cout << "Reading " << controlSize * sizeof(float) << " bytes of control data\n";
+    //std::cout << "Reading " << controlSize * sizeof(float) << " bytes of control data\n";
     char *temp = (char*)&controlSize;
-    std::cout << "Bytes read:";
-    for (int i = 0; i < 4; ++i) {
-	std::cout << " " << (int)temp[i];
-    }
-    std::cout << "\n";
+    //std::cout << "Bytes read:";
+    //for (int i = 0; i < 4; ++i) {
+	//std::cout << " " << (int)temp[i];
+    //}
+    //std::cout << "\n";
     std::vector<double> controls(controlSize);
     char *buffPtr = newBuff;
     while (buffPtr - newBuff < controlSize * sizeof(float)) {
 	n = read(clientSocket, buffPtr, controlSize*sizeof(float) - (buffPtr - newBuff));
 	buffPtr += n;
     }
-    std::cout << "Read " << controlSize * sizeof(float) << " bytes of control data\n";
+    //std::cout << "Read " << controlSize * sizeof(float) << " bytes of control data\n";
 
-    // Check if we want to reset
+    /*// Check if we want to reset
     std::string response(newBuff);
     if (response == "RESET") {
 	m_reset = true;
@@ -1280,7 +1369,7 @@ void HumanDemo::setMotorTargets(btScalar deltaTime)
 
     for (int r=0; r<m_rigs.size(); r++) {
 	m_rigs[r]->ApplyControl(controls);
-    }
+	}*/
 }
 
 #if 0
