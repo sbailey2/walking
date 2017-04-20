@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     currentDemo->initPhysics();
     
     // Update the demo indefinitely
-    double deltaTime = 1.0/60.0;
+    double deltaTime = 1.0/100.0;
     while(true) {
 	currentDemo->stepSimulation(deltaTime);
 	if (currentDemo->reset()) {
