@@ -205,15 +205,20 @@ class HumanPoseEnv(Env):
 
         # Determine if we're at the last frame of the mocap data
         if self.pos_obs:
-            eps = 0.01
+            eps = 0.005
         else:
             eps = 0.01 # About 6 degrees off on average
         #usedIdx = np.asarray([0,1,2,3,4,5,6,7])
         #usedIdx = np.asarray([0,1,2,3,4,5,6,7,8,9,10,11])
         #usedIdx = np.asarray([12,13,14,15])
-        usedIdx = np.arange(self.process(state).shape[0])
+        if self.pos_obs:
+            statePos = self.process(state).reshape((-1,3))
+            targetPos = self.state[:self.usedDim].reshape((-1,3))
+            diff = np.mean(np.sum(np.square(statePos-targetPos),1))
+        else:
+            usedIdx = np.arange(self.process(state).shape[0])
+            diff = np.mean(np.square(self.process(state)[usedIdx]-self.state[:self.usedDim][usedIdx]))
         actionMagnitude = np.sum(np.square(action)) * 1e-4
-        diff = np.mean(np.square(self.process(state)[usedIdx]-self.state[:self.usedDim][usedIdx]))
         #diff = np.mean(np.square(self.process(state)-self.state[:self.usedDim]))
         #diff += actionMagnitude
         done = False

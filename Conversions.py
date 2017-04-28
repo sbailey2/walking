@@ -43,7 +43,7 @@ lHand = np.asarray((0.311769,0,0))
 def rot2pos(pose):
 
     # First, convert all euler angles into rotation matrices
-    pose = pose*np.pi/180
+    #pose = pose*np.pi/180
     rfemur = np.asarray(euler.euler2mat(pose[0],pose[1],pose[2]))
     rtibia = np.asarray(euler.euler2mat(pose[3],0,0))
     lfemur = np.asarray(euler.euler2mat(pose[4],pose[5],pose[6]))
@@ -77,26 +77,26 @@ def rot2pos(pose):
     result = np.stack([rfemurPos,rtibiaPos,lfemurPos,ltibiaPos,rhumerusPos,rradiusPos,lhumerusPos,lradiusPos])
     return result
     
-def plotPose(pose,x=0,y=1):
-    plt.close()
+def plotPose(pose,x=0,y=1,color='b'):
+    #plt.close()
 
     root = np.asarray((0,0,0))
     pelvisPos = lowWaist + pelvis
     rThighPos = pelvisPos + rThigh
     lThighPos = pelvisPos + lThigh
-    plt.plot([root[x],lowWaist[x]],[root[y],lowWaist[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pelvisPos[x],lowWaist[x]],[pelvisPos[y],lowWaist[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pelvisPos[x],rThighPos[x]],[pelvisPos[y],rThighPos[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pose[0,x],rThighPos[x]],[pose[0,y],rThighPos[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pose[0,x],pose[1,x]],[pose[0,y],pose[1,y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pelvisPos[x],lThighPos[x]],[pelvisPos[y],lThighPos[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pose[2,x],lThighPos[x]],[pose[2,y],lThighPos[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pose[2,x],pose[3,x]],[pose[2,y],pose[3,y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([root[x],rUpArm[x]],[root[y],rUpArm[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pose[4,x],rUpArm[x]],[pose[4,y],rUpArm[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pose[4,x],pose[5,x]],[pose[4,y],pose[5,y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([root[x],lUpArm[x]],[root[y],lUpArm[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pose[6,x],lUpArm[x]],[pose[6,y],lUpArm[y]],'-b.',linewidth=3,markersize=10)
-    plt.plot([pose[6,x],pose[7,x]],[pose[6,y],pose[7,y]],'-b.',linewidth=3,markersize=10)
+    plt.plot([root[x],lowWaist[x]],[root[y],lowWaist[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pelvisPos[x],lowWaist[x]],[pelvisPos[y],lowWaist[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pelvisPos[x],rThighPos[x]],[pelvisPos[y],rThighPos[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pose[0,x],rThighPos[x]],[pose[0,y],rThighPos[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pose[0,x],pose[1,x]],[pose[0,y],pose[1,y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pelvisPos[x],lThighPos[x]],[pelvisPos[y],lThighPos[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pose[2,x],lThighPos[x]],[pose[2,y],lThighPos[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pose[2,x],pose[3,x]],[pose[2,y],pose[3,y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([root[x],rUpArm[x]],[root[y],rUpArm[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pose[4,x],rUpArm[x]],[pose[4,y],rUpArm[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pose[4,x],pose[5,x]],[pose[4,y],pose[5,y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([root[x],lUpArm[x]],[root[y],lUpArm[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pose[6,x],lUpArm[x]],[pose[6,y],lUpArm[y]],'-'+color+'.',linewidth=3,markersize=10)
+    plt.plot([pose[6,x],pose[7,x]],[pose[6,y],pose[7,y]],'-'+color+'.',linewidth=3,markersize=10)
     plt.axis('equal')
-    plt.show()
+    #plt.show()

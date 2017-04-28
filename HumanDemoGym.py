@@ -10,11 +10,11 @@ import HumanPoseEnv
 import time
 
 #env = gym.make('HumanEnv-v0')
-env = HumanPoseEnv.HumanPoseEnv(1,1,alpha=0.75)
+env = HumanPoseEnv.HumanPoseEnv(1,1,alpha=0.0,pos_obs=True)
 o = env.reset()
 
 for i in range(100000):
-    a = 0*env.action_space.sample()
+    a = env.action_space.sample()
     #a[11] = -10
     #a[9] = -1
     #a[-3] = -1
@@ -42,8 +42,8 @@ for i in range(100000):
 
     print('Action: '+str(a))
     o,r,d,info = env.step(a)
-    #print('Target: '+str(o[:4]*180/np.pi))
-    print('State: '+str(o[-4:]*180/np.pi))
-    #print('Reward: '+str(r))
+    print('Target: '+str(o[:12]))
+    print('State: '+str(o[-12:]))
+    print('Reward: '+str(r))
     if d:
         env.reset()
