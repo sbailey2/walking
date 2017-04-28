@@ -328,8 +328,8 @@ public:
 	: m_ownerWorld (ownerWorld)
     {
 	btVector3 vUp(0, 1, 0);
-	btScalar damping(50.0);
-	btScalar stiffness(50.0);
+	btScalar damping(5.0);
+	btScalar stiffness(5.0);
 
 	// Set up the world and stuffs
 	m_ownerWorld->getSolverInfo().m_solverMode = SOLVER_USE_WARMSTARTING | SOLVER_SIMD | SOLVER_USE_2_FRICTION_DIRECTIONS | SOLVER_ENABLE_FRICTION_DIRECTION_CACHING;
@@ -371,11 +371,15 @@ public:
 	float fLegLength = 0.45f;
 	float fForeLegLength = 0.75f;
 	float armLength = 0.277128;
-	btCapsuleShape *torsoShape = new btCapsuleShapeX(btScalar(0.07), btScalar(0.14));
+	//btCapsuleShape *torsoShape = new btCapsuleShapeX(btScalar(0.07), btScalar(0.14));
+	btCapsuleShape *torsoShape = new btCapsuleShapeX(btScalar(0.07), btScalar(0.07));
 	btSphereShape *headShape = new btSphereShape(btScalar(0.09));
-	btCapsuleShape *upWaistShape = new btCapsuleShapeX(btScalar(0.06), btScalar(0.12));
-	btCapsuleShape *loWaistShape = new btCapsuleShapeX(btScalar(0.06), btScalar(0.12));
-	btCapsuleShape *buttShape = new btCapsuleShapeX(btScalar(0.09), btScalar(0.14));
+	//btCapsuleShape *upWaistShape = new btCapsuleShapeX(btScalar(0.06), btScalar(0.12));
+	//btCapsuleShape *loWaistShape = new btCapsuleShapeX(btScalar(0.06), btScalar(0.12));
+	btCapsuleShape *upWaistShape = new btCapsuleShapeX(btScalar(0.06), btScalar(0.06));
+	btCapsuleShape *loWaistShape = new btCapsuleShapeX(btScalar(0.06), btScalar(0.06));
+	//btCapsuleShape *buttShape = new btCapsuleShapeX(btScalar(0.09), btScalar(0.14));
+	btCapsuleShape *buttShape = new btCapsuleShapeX(btScalar(0.09), btScalar(0.09));
 	btCapsuleShape *rThighShape = new btCapsuleShape(btScalar(0.06), btScalar(0.34));
 	btCapsuleShape *rShinShape = new btCapsuleShape(btScalar(0.049), btScalar(0.3));
 	btSphereShape *rFootShape = new btSphereShape(btScalar(0.075));
@@ -384,11 +388,15 @@ public:
 	btCapsuleShape *lShinShape = new btCapsuleShape(btScalar(0.049), btScalar(0.3));
 	btSphereShape *lFootShape = new btSphereShape(btScalar(0.075));
 	//btBoxShape *lFootShape = new btBoxShape(btVector3(0.075,0.075,0.075));
-	btCapsuleShape *rUpArmShape = new btCapsuleShapeX(btScalar(0.04), btScalar(armLength));
-	btCapsuleShape *rLoArmShape = new btCapsuleShapeX(btScalar(0.04), btScalar(armLength));
+	//btCapsuleShape *rUpArmShape = new btCapsuleShapeX(btScalar(0.04), btScalar(armLength));
+	//btCapsuleShape *rLoArmShape = new btCapsuleShapeX(btScalar(0.04), btScalar(armLength));
 	btSphereShape *rHandShape = new btSphereShape(btScalar(0.04));
-	btCapsuleShape *lUpArmShape = new btCapsuleShapeX(btScalar(0.04), btScalar(armLength));
-	btCapsuleShape *lLoArmShape = new btCapsuleShapeX(btScalar(0.04), btScalar(armLength));
+	//btCapsuleShape *lUpArmShape = new btCapsuleShapeX(btScalar(0.04), btScalar(armLength));
+	//btCapsuleShape *lLoArmShape = new btCapsuleShapeX(btScalar(0.04), btScalar(armLength));
+	btCapsuleShape *rUpArmShape = new btCapsuleShapeX(btScalar(0.035), btScalar(armLength));
+	btCapsuleShape *rLoArmShape = new btCapsuleShapeX(btScalar(0.035), btScalar(armLength));
+	btCapsuleShape *lUpArmShape = new btCapsuleShapeX(btScalar(0.035), btScalar(armLength));
+	btCapsuleShape *lLoArmShape = new btCapsuleShapeX(btScalar(0.035), btScalar(armLength));
 	btSphereShape *lHandShape = new btSphereShape(btScalar(0.04));
 	
 	m_shapes.push_back(torsoShape);
@@ -685,7 +693,7 @@ public:
 	m_parents.push_back(5);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(-1.0), btScalar(0.0), btScalar(0.0)), 6)); // 5
 
-	m_jointControls.push_back(JointControl(rKneeConstraint,5));
+	m_jointControls.push_back(JointControl(rKneeConstraint,3));
 
 	m_evaluators.push_back(new Joint1DOF("rtibia", rKneeConstraint, 0, -1.0));
 
@@ -789,7 +797,7 @@ public:
 	m_parents.push_back(8);
 	m_controls.push_back(std::pair<btVector3,int>(btVector3(btScalar(-1.0), btScalar(0.0), btScalar(0.0)), 9)); // 9
 
-	m_jointControls.push_back(JointControl(lKneeConstraint,5));
+	m_jointControls.push_back(JointControl(lKneeConstraint,3));
 
 	m_evaluators.push_back(new Joint1DOF("ltibia", lKneeConstraint, 0, -1.0));
 
@@ -831,8 +839,8 @@ public:
 	btGeneric6DofSpring2Constraint *rShldrConstraint = new btGeneric6DofSpring2Constraint(*upWaistBody, *rUpArmBody, rShldrWaistFrame, rShldrArmFrame);
 	btVector3 rShldrLL(-M_PI_2, -M_PI_2-M_PI_4, -M_PI_2-M_PI_4);
 	btVector3 rShldrUL(M_PI_2, M_PI_2+M_PI_4, M_PI_2+M_PI_4);
-	rShldrConstraint->setAngularLowerLimit(rShldrLL);
-	rShldrConstraint->setAngularUpperLimit(rShldrUL);
+	//rShldrConstraint->setAngularLowerLimit(rShldrLL);
+	//rShldrConstraint->setAngularUpperLimit(rShldrUL);
 	rShldrConstraint->enableSpring(3, true);
 	rShldrConstraint->setDamping(3, damping);
 	rShldrConstraint->setStiffness(3, stiffness);
@@ -858,6 +866,8 @@ public:
 	rShldrAxisOffset.setRotation(btQuaternion(0,30*M_PI/180,0));
 	m_evaluators.push_back(new Joint3DOF("rhumerus", rShldrConstraint, 180, 30, 90,
 					     rShldrAxisOffset));
+
+	rUpArmBody->setCollisionFlags(4);
 
 	// Right Lower Arm 12
 	btTransform rLoArmTransform;
@@ -898,6 +908,8 @@ public:
 
 	m_jointControls.push_back(JointControl(rElbowConstraint,4));
 
+	rLoArmBody->setCollisionFlags(4);
+
 	// Right Hand 13
 	btTransform rHandTransform;
 	rHandTransform.setIdentity();
@@ -915,6 +927,8 @@ public:
 	m_ownerWorld->addConstraint(rWristConstraint, true);
         m_joints.push_back(rWristConstraint);
 	m_parents.push_back(12);
+
+	rHandBody->setCollisionFlags(4);
 
 	// Left Upper Arm 14
 	btTransform lUpArmTransform;
@@ -940,8 +954,8 @@ public:
 	btGeneric6DofSpring2Constraint *lShldrConstraint = new btGeneric6DofSpring2Constraint(*upWaistBody, *lUpArmBody, lShldrWaistFrame, lShldrArmFrame);
 	btVector3 lShldrLL(-M_PI_2, -M_PI_2-M_PI_4, -M_PI_2-M_PI_4);
 	btVector3 lShldrUL(M_PI_2, M_PI_2+M_PI_4, M_PI_2+M_PI_4);
-	lShldrConstraint->setAngularLowerLimit(lShldrLL);
-	lShldrConstraint->setAngularUpperLimit(lShldrUL);
+	//lShldrConstraint->setAngularLowerLimit(lShldrLL);
+	//lShldrConstraint->setAngularUpperLimit(lShldrUL);
 	lShldrConstraint->enableSpring(3, true);
 	lShldrConstraint->setDamping(3, damping);
 	lShldrConstraint->setStiffness(3, stiffness);
@@ -968,6 +982,8 @@ public:
 	lShldrAxisOffset.setRotation(btQuaternion(0,30*M_PI/180,0));
 	m_evaluators.push_back(new Joint3DOF("lhumerus", lShldrConstraint, 180, -30, -90,
 					     lShldrAxisOffset));
+
+	lUpArmBody->setCollisionFlags(4);
 
 	// Left Lower Arm 15
 	btTransform lLoArmTransform;
@@ -1008,6 +1024,8 @@ public:
 	
 	m_evaluators.push_back(new Joint1DOF("lradius", lElbowConstraint, 1));
 
+	lLoArmBody->setCollisionFlags(4);
+
 	// Left Hand 16
 	btTransform lHandTransform;
 	lHandTransform.setIdentity();
@@ -1026,11 +1044,13 @@ public:
         m_joints.push_back(lWristConstraint);
 	m_parents.push_back(15);
 
+	lHandBody->setCollisionFlags(4);
+
 	for (int i = 0; i < m_jointControls.size(); ++i) {
 	    btGeneric6DofSpring2Constraint* c = m_jointControls[i].first;
 	    int index = m_jointControls[i].second;
-	    //c->enableMotor(index, true);
-	    //c->setMaxMotorForce(index, 1.0);
+	    c->enableMotor(index, true);
+	    c->setMaxMotorForce(index, 5.0);
 	}
 
 	// Add blank evaluators so that each frame is complete for the mocap conversion
@@ -1099,7 +1119,7 @@ public:
 
     void ApplyControl(const std::vector<double> &controls)
     {
-	const double MAX_IMPULSE = 1.5;
+	/*const double MAX_IMPULSE = 1.5;
 	std::vector<double> inputs(controls);
 	for (int i = 0; i < inputs.size(); ++i) {
 	    if (inputs[i] < -MAX_IMPULSE) {
@@ -1129,13 +1149,13 @@ public:
 	}
 	//btRigidBody *foot = m_bodies[6];
 	//btVector3 imp(10.0,0,0);
-	//foot->applyCentralImpulse(imp);
+	//foot->applyCentralImpulse(imp);*/
 
-	//for (int i = 0; i < m_jointControls.size() && i < controls.size(); ++i) {
-	//    btGeneric6DofSpring2Constraint* c = m_jointControls[i].first;
-	//    int index = m_jointControls[i].second;
-	//    c->setTargetVelocity(index, controls[i]);
-	//}
+	for (int i = 0; i < m_jointControls.size() && i < controls.size(); ++i) {
+	    btGeneric6DofSpring2Constraint* c = m_jointControls[i].first;
+	    int index = m_jointControls[i].second;
+	    c->setTargetVelocity(index, controls[i]);
+	}
     }
 };
 

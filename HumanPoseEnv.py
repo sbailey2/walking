@@ -6,6 +6,7 @@ from rllab.core.serializable import Serializable
 import socket
 import struct
 import logging
+import Conversions
 
 import time
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class HumanPoseEnv(Env):
 
-    def __init__(self, window=1, hold=1, alpha=0.0, log_dir=None, record_log=True):
+    def __init__(self, window=1, hold=1, alpha=0.0, log_dir=None, record_log=True, pos_obs=False):
         Serializable.quick_init(self, locals())
         # Connect to the simulation in Bullet
         self.HOST, self.PORT = 'localhost', 47138
@@ -58,6 +59,7 @@ class HumanPoseEnv(Env):
             jointMask += range(i,i+l)
         self.mocapData = data['data'][0]
         self.mocapMask = np.asarray(jointMask)
+        self.pos_obs = pos_obs
 
     def restore_socket(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -101,26 +103,34 @@ class HumanPoseEnv(Env):
 
     @property
     def action_space(self):
-        return Box(low=-1.0, high=1.0, shape=(16,))
+        return Box(low=-10.0, high=10.0, shape=(16,))
 
     def process(self, state):
         mask = np.ones(self.dim).astype(bool)
         mask[[0,1,2,3,4,5]] = False # Drop the x and z coordinates of the root joint
-        return state[mask]
+        state = state[mask]
+        if self.pos_obs:
+            return Converversions.rot2pos(state)
+        else:
+            return state
 
     def add_mocap_observation(self):
         frame = min(self.frame,self.mocapSample.shape[0])
-        self.state[:self.usedDim] = self.normalize_rotation_data(self.mocapSample[frame,self.mocapMask].copy())
+        frame = self.normalize_rotation_data(self.mocapSample[frame,self.mocapMask].copy())
+        if self.pos_obs:
+            self.state[:self.usedDim] = Conversions.rot2pos(frame)
+        else:
+            self.state[:self.usedDim] = frame
 
     def reset(self):
         # Reset the simulation
         self.send_reset()
 
         # Pick a mocap segment to copy
-        #self.mocapSample = self.mocapData[np.random.randint(0,len(self.mocapData))]
-        #self.frame = np.random.randint(0,len(self.mocapSample))
-        self.mocapSample = self.mocapData[23]
-        self.frame = 123 % len(self.mocapSample)
+        self.mocapSample = self.mocapData[np.random.randint(0,len(self.mocapData))]
+        self.frame = np.random.randint(0,len(self.mocapSample))
+        #self.mocapSample = self.mocapData[23]
+        #self.frame = 123 % len(self.mocapSample)
 
         # Get the state
         state = self.normalize_rotation_data(self.receive_state())
@@ -140,7 +150,7 @@ class HumanPoseEnv(Env):
             #a = np.zeros(16)
             #a[:8] = action
             #action = a
-            self.send_action(0*action)
+            self.send_action(action)
             state = self.normalize_rotation_data(self.receive_state())
             self.state[:self.usedDim*(self.window-1)] = self.state[self.usedDim:]
             self.state[self.usedDim*(self.window-1):] = self.process(state)
@@ -160,11 +170,11 @@ class HumanPoseEnv(Env):
         assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
 
         # Scale down some rotations because the torque adds a lot to the rotational force
-        action[2] *= 0.05
-        action[6] *= 0.05
-        action[8] *= 0.05
-        action[12] *= 0.05
-        action[8:] *= 0.5 # Scale down arm controls
+        #action[2] *= 0.05
+        #action[6] *= 0.05
+        #action[8] *= 0.2
+        #action[12] *= 0.2
+        #action[8:] *= 0.75 # Scale down arm controls
         #a = np.zeros(16)
         #a[:8] = action
         #action = a
@@ -194,18 +204,24 @@ class HumanPoseEnv(Env):
         #done = y < self.y_threshold
 
         # Determine if we're at the last frame of the mocap data
-        eps = 0.005 # About 3 degrees off on average
-        usedIdx = np.asarray([0,1,2,3,4,5,6,7])
-        actionMagnitude = np.sum(np.square(action)) * 1e-2
-        #diff = np.mean(np.square(self.process(state)[usedIdx]-self.state[:self.usedDim][usedIdx]))
-        diff = np.mean(np.square(self.process(state)-self.state[:self.usedDim]))
+        if self.pos_obs:
+            eps = 0.01
+        else:
+            eps = 0.01 # About 6 degrees off on average
+        #usedIdx = np.asarray([0,1,2,3,4,5,6,7])
+        #usedIdx = np.asarray([0,1,2,3,4,5,6,7,8,9,10,11])
+        #usedIdx = np.asarray([12,13,14,15])
+        usedIdx = np.arange(self.process(state).shape[0])
+        actionMagnitude = np.sum(np.square(action)) * 1e-4
+        diff = np.mean(np.square(self.process(state)[usedIdx]-self.state[:self.usedDim][usedIdx]))
+        #diff = np.mean(np.square(self.process(state)-self.state[:self.usedDim]))
         #diff += actionMagnitude
         done = False
         if diff < eps:
             done = True
             reward = 1.0
         if not done:
-            reward = -diff
+            reward = -diff-actionMagnitude
             #self.lastX = x
         elif self.steps_beyond_done is None:
             self.steps_beyond_done = 0

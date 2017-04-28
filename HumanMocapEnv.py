@@ -101,7 +101,7 @@ class HumanMocapEnv(Env):
 
     @property
     def action_space(self):
-        return Box(low=-30.0, high=30.0, shape=(16,))
+        return Box(low=-1.0, high=1.0, shape=(16,))
 
     def process(self, state):
         mask = np.ones(self.dim).astype(bool)
@@ -118,7 +118,10 @@ class HumanMocapEnv(Env):
 
         # Pick a mocap segment to copy
         self.mocapSample = self.mocapData[np.random.randint(0,len(self.mocapData))]
+        self.frame = np.random.randint(0,len(self.mocapSample))
         self.frame = 0
+        #self.mocapSample = self.mocapData[23]
+        #self.frame = 123 % len(self.mocapSample)
 
         # Get the state
         state = self.normalize_rotation_data(self.receive_state())
@@ -128,24 +131,50 @@ class HumanMocapEnv(Env):
         #print(state)
 
         # Go one more step because the current state is invalid
-        c = np.zeros(16)
-        self.send_action(c)
+        #c = np.zeros(16)
+        #self.send_action(c)
+
+        # Apply a few random steps to have a random start
+        numSteps = 10
+        for _ in range(numSteps):
+            action = self.action_space.sample()
+            #a = np.zeros(16)
+            #a[:8] = action
+            #action = a
+            self.send_action(0*action)
+            state = self.normalize_rotation_data(self.receive_state())
+            self.state[:self.usedDim*(self.window-1)] = self.state[self.usedDim:]
+            self.state[self.usedDim*(self.window-1):] = self.process(state)
 
         # Get the state
-        state = self.normalize_rotation_data(self.receive_state())
-        self.state[self.usedDim*(self.window-1):] = self.process(state)
+        #state = self.normalize_rotation_data(self.receive_state())
+        #self.state[self.usedDim*(self.window-1):] = self.process(state)
         self.add_mocap_observation()
 
         self.steps_beyond_done = None
-        self.a = np.zeros(16)
+        #self.a = np.zeros(16)
+        self.a = action
         self.lastX = 0.0
         return np.array(self.state)
 
     def step(self, action):
         assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
+
+        # Scale down some rotations because the torque adds a lot to the rotational force
+        action[2] *= 0.05
+        action[6] *= 0.05
+        action[8] *= 0.2
+        action[12] *= 0.2
+        action[8:] *= 0.75 # Scale down arm controls
+        #a = np.zeros(16)
+        #a[:8] = action
+        #action = a
+        
         state = self.state
         self.a = self.alpha*self.a + (1-self.alpha)*action
         action = self.a
+
+
         
         # Apply the action
         for _ in range(self.hold):
@@ -166,12 +195,21 @@ class HumanMocapEnv(Env):
         #done = y < self.y_threshold
 
         # Determine if we're at the last frame of the mocap data
+        eps = 0.005 # About 3 degrees off on average
+        usedIdx = np.asarray([0,1,2,3,4,5,6,7])
+        #usedIdx = np.asarray([0,1,2,3,4,5,6,7,8,9,10,11])
+        #usedIdx = np.asarray([12,13,14,15])
+        actionMagnitude = np.sum(np.square(action)) * 1e-2
+        diff = np.mean(np.square(self.process(state)[usedIdx]-self.state[:self.usedDim][usedIdx]))
+        #diff = np.mean(np.square(self.process(state)-self.state[:self.usedDim]))
+        #diff += actionMagnitude
         done = False
+        #if diff < eps:
         if self.frame >= self.mocapSample.shape[0]:
             done = True
-
+            reward = -diff
         if not done:
-            reward = -np.mean(np.square(self.process(state)-self.state[:self.usedDim]))
+            reward = -diff
             #self.lastX = x
         elif self.steps_beyond_done is None:
             self.steps_beyond_done = 0
