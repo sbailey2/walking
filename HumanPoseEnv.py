@@ -27,6 +27,7 @@ class HumanPoseEnv(Env):
         self.sendSock.connect((self.HOST, self.PORT))
         #self.s.send(b'Hello!')
         self.dim = 22
+        self.pos_obs = pos_obs
         #state = self.receive_state()
 
         # Height at which to fail the episode
@@ -59,7 +60,6 @@ class HumanPoseEnv(Env):
             jointMask += range(i,i+l)
         self.mocapData = data['data'][0]
         self.mocapMask = np.asarray(jointMask)
-        self.pos_obs = pos_obs
 
     def restore_socket(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -110,7 +110,7 @@ class HumanPoseEnv(Env):
         mask[[0,1,2,3,4,5]] = False # Drop the x and z coordinates of the root joint
         state = state[mask]
         if self.pos_obs:
-            return Converversions.rot2pos(state)
+            return Conversions.rot2pos(state).reshape(-1)
         else:
             return state
 
@@ -118,7 +118,7 @@ class HumanPoseEnv(Env):
         frame = min(self.frame,self.mocapSample.shape[0])
         frame = self.normalize_rotation_data(self.mocapSample[frame,self.mocapMask].copy())
         if self.pos_obs:
-            self.state[:self.usedDim] = Conversions.rot2pos(frame)
+            self.state[:self.usedDim] = Conversions.rot2pos(frame).reshape(-1)
         else:
             self.state[:self.usedDim] = frame
 
